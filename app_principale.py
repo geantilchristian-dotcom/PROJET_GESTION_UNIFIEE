@@ -6,21 +6,58 @@ import random
 import hashlib
 
 # ==========================================
-# 1. CONFIGURATION & CORRECTIF VISUEL MOBILE
+# 1. STYLE CSS : CONTRASTE BLANC SUR COULEUR
 # ==========================================
-st.set_page_config(page_title="ANASH ERP v135", layout="wide")
+st.set_page_config(page_title="ANASH ERP v137", layout="wide")
 
 st.markdown("""
     <style>
-    /* Forcer le texte en noir pour la visibilité sur mobile */
-    h1, h2, h3, p, label, .stMarkdown {
+    /* 1. Texte en NOIR par défaut sur fond blanc (Écran de connexion) */
+    h1, h2, h3, p, label, .stMarkdown, div[data-testid="stWidgetLabel"] p {
         color: #000000 !important;
     }
     
-    /* Style spécifique pour les labels des champs de saisie */
-    div[data-testid="stWidgetLabel"] p {
+    /* 2. Texte en BLANC pour les éléments sur fond BLEU ou NOIR */
+    /* Blocs de code (consigne : fond bleu, texte blanc) */
+    code { 
+        color: #FFFFFF !important; 
+        background-color: #0047AB !important; 
+        padding: 2px 5px; 
+        border-radius: 4px; 
+    }
+
+    /* Cadre du Total Panier (fond dégradé bleu, texte blanc) */
+    .total-frame {
+        background: linear-gradient(135deg, #0047AB 0%, #002D6B 100%);
+        color: #FFFFFF !important; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        border: 4px solid #FFD700; 
+        font-size: 28px; 
+        font-weight: bold; 
+        margin: 10px 0;
+    }
+    
+    /* Forcer le texte en blanc à l'intérieur du cadre total */
+    .total-frame div, .total-frame span {
+        color: #FFFFFF !important;
+    }
+
+    /* Boutons (fond bleu, texte blanc) */
+    .stButton>button { 
+        width: 100% !important; 
+        height: 55px !important; 
+        background-color: #0047AB !important; 
+        color: #FFFFFF !important; 
+        border-radius: 10px !important; 
+        font-weight: bold;
+        border: none;
+    }
+
+    /* Champs de saisie (si fond noir automatique sur mobile) */
+    input {
         color: #000000 !important;
-        font-weight: bold !important;
     }
 
     @media print {
@@ -33,23 +70,6 @@ st.markdown("""
 
     .stApp { background-color: #FFFFFF !important; }
     
-    /* Fond bleu, texte blanc pour les blocs de code selon votre consigne */
-    code { color: white !important; background-color: #0047AB !important; padding: 2px 5px; border-radius: 4px; }
-    
-    /* Cadre du Total Panier en couleur */
-    .total-frame {
-        background: linear-gradient(135deg, #0047AB 0%, #002D6B 100%);
-        color: white !important; padding: 20px; border-radius: 12px; text-align: center;
-        border: 4px solid #FFD700; font-size: 28px; font-weight: bold; margin: 10px 0;
-    }
-
-    .stButton>button { 
-        width: 100% !important; height: 55px !important; 
-        background-color: #0047AB !important; color: white !important; 
-        border-radius: 10px !important; font-weight: bold;
-    }
-    
-    /* Boîtes de facture */
     .facture-box { background: white; border: 1px solid #000; padding: 20px; color: black !important; font-family: 'Arial'; }
     .ticket-thermique {
         background: white; border: 1px dashed #000; padding: 10px; color: black !important;
@@ -59,7 +79,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. GESTION BASE DE DONNÉES
+# 2. LOGIQUE BASE DE DONNÉES
 # ==========================================
 def make_hashes(password): return hashlib.sha256(str.encode(password)).hexdigest()
 def check_hashes(password, hashed_text): return make_hashes(password) == hashed_text
@@ -86,7 +106,7 @@ init_db()
 
 c_data = run_db("SELECT * FROM config WHERE id=1", fetch=True)
 if not c_data:
-    run_db("INSERT INTO config VALUES (1, 'MA BOUTIQUE', 'ADRESSE', 'RCCM', 'NIF', 'IDNAT', '+243', 2850.0)")
+    run_db("INSERT INTO config VALUES (1, 'VOTRE BOUTIQUE', 'ADRESSE', 'RCCM', 'NIF', 'IDNAT', '+243', 2850.0)")
     c_data = run_db("SELECT * FROM config WHERE id=1", fetch=True)
 _, C_ENT, C_ADR, C_RCCM, C_NIF, C_IDNAT, C_TEL, C_TAUX = c_data[0]
 
@@ -95,11 +115,11 @@ if 'panier' not in st.session_state: st.session_state.panier = {}
 if 'ref_fac' not in st.session_state: st.session_state.ref_fac = f"FAC-{datetime.now().strftime('%y%m%d')}-{random.randint(100, 999)}"
 
 # ==========================================
-# 3. AUTHENTIFICATION (CORRIGÉE POUR MOBILE)
+# 3. ÉCRAN DE CONNEXION (VISIBILITÉ MAX)
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h2 style='text-align:center;'>🔐 CONNEXION ANASH ERP</h2>", unsafe_allow_html=True)
-    _, cent, _ = st.columns([0.1, 1, 0.1])
+    _, cent, _ = st.columns([0.05, 1, 0.05])
     with cent:
         u = st.text_input("Nom d'utilisateur")
         p = st.text_input("Mot de passe", type="password")
@@ -108,18 +128,17 @@ if not st.session_state.logged_in:
             if res and check_hashes(p, res[0][0]):
                 st.session_state.logged_in, st.session_state.user_role, st.session_state.username = True, res[0][1], u
                 st.rerun()
-            else:
-                st.error("Identifiants incorrects")
+            else: st.error("Identifiants incorrects")
     st.stop()
 
 # ==========================================
-# 4. NAVIGATION & MODULES
+# 4. MODULES
 # ==========================================
 st.sidebar.title(f"👤 {st.session_state.username}")
-menu_options = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK", "📉 DETTES", "👥 USERS", "⚙️ CONFIG"] if st.session_state.user_role == "ADMIN" else ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES"]
-menu = st.sidebar.radio("MENU", menu_options)
+menu_opt = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK", "📉 DETTES", "👥 USERS", "⚙️ CONFIG"] if st.session_state.user_role == "ADMIN" else ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES"]
+menu = st.sidebar.radio("SÉLECTIONNER UN MODULE", menu_opt)
 
-# --- CAISSE ---
+# --- MODULE CAISSE ---
 if menu == "🛒 CAISSE":
     col_v, col_f = st.columns([1, 1.3])
     with col_v:
@@ -145,8 +164,10 @@ if menu == "🛒 CAISSE":
         c_nom = st.text_input("NOM DU CLIENT", "PASSAGER")
         tx_m = C_TAUX if devise == "CDF" else 1.0
         tot_p = total_usd * tx_m
+        # CADRE TOTAL : FOND BLEU, TEXTE BLANC
         st.markdown(f'<div class="total-frame">NET À PAYER : {tot_p:,.2f} {devise}</div>', unsafe_allow_html=True)
-        acompte = st.number_input(f"REÇU ({devise})", 0.0)
+        
+        acompte = st.number_input(f"MONTANT REÇU ({devise})", 0.0)
         reste = max(0.0, tot_p - acompte)
         fmt = st.radio("FORMAT", ["THERMIQUE", "A4"], horizontal=True)
 
@@ -158,17 +179,17 @@ if menu == "🛒 CAISSE":
                     <table width="100%"><tr><td>REF: {st.session_state.ref_fac}</td><td align="right">{datetime.now().strftime('%d/%m/%Y')}</td></tr></table>
                     <p>Client: {c_nom.upper()}</p><hr>
                     <table width="100%" border="1" style="border-collapse:collapse;">
-                        <tr><th>Art.</th><th>Qté</th><th>Total</th></tr>{rows_html}
+                        <tr><th>Article</th><th>Qté</th><th>Total</th></tr>{rows_html}
                     </table><hr>
                     <h3 align="right">TOTAL : {tot_p:,.2f} {devise}</h3>
                     <p align="right">Payé: {acompte:,.2f} | Reste: {reste:,.2f}</p>
                 </div>
             </div>""", unsafe_allow_html=True)
             
-            if st.button("🖨️ IMPRIMER"):
+            if st.button("🖨️ IMPRIMER MAINTENANT"):
                 st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
 
-        if st.button("🚀 VALIDER TRANSACTION"):
+        if st.button("🚀 VALIDER & DÉBITER STOCK"):
             if st.session_state.panier:
                 ac_usd = acompte / tx_m
                 re_usd = total_usd - ac_usd
@@ -178,32 +199,32 @@ if menu == "🛒 CAISSE":
                 for n, q in st.session_state.panier.items(): run_db("UPDATE produits SET stock_actuel = stock_actuel - ? WHERE designation = ?", (q, n))
                 st.session_state.panier = {}; st.session_state.ref_fac = f"FAC-{datetime.now().strftime('%y%m%d')}-{random.randint(100, 999)}"; st.rerun()
 
-# --- STOCK ---
+# --- MODULE STOCK ---
 elif menu == "📦 STOCK" and st.session_state.user_role == "ADMIN":
     st.subheader("📦 Stock")
     with st.form("st_f"):
-        c1, c2, c3 = st.columns(3); dn = c1.text_input("Désignation"); pr = c2.number_input("Prix $"); qt = c3.number_input("Qté", step=1)
-        if st.form_submit_button("AJOUTER"):
+        c1, c2, c3 = st.columns(3); dn = c1.text_input("Désignation"); pr = c2.number_input("Prix $"); qt = c3.number_input("Stock", step=1)
+        if st.form_submit_button("AJOUTER PRODUIT"):
             run_db("INSERT INTO produits (designation, stock_initial, stock_actuel, prix_vente) VALUES (?,?,?,?)", (dn.upper(), qt, qt, pr)); st.rerun()
     for pid, d, p, s in run_db("SELECT id, designation, prix_vente, stock_actuel FROM produits", fetch=True):
-        with st.expander(f"{d} ({s})"):
-            np = st.number_input("Prix ($)", value=float(p), key=f"p_{pid}")
-            if st.button("Sauver", key=f"s_{pid}"): run_db("UPDATE produits SET prix_vente=? WHERE id=?", (np, pid)); st.rerun()
-            if st.button("Supprimer", key=f"d_{pid}"): run_db("DELETE FROM produits WHERE id=?", (pid,)); st.rerun()
+        with st.expander(f"{d} ({s} restants)"):
+            np = st.number_input("Modifier Prix ($)", value=float(p), key=f"p_{pid}")
+            if st.button("Sauvegarder", key=f"s_{pid}"): run_db("UPDATE produits SET prix_vente=? WHERE id=?", (np, pid)); st.rerun()
+            if st.button("🗑️ Supprimer", key=f"d_{pid}"): run_db("DELETE FROM produits WHERE id=?", (pid,)); st.rerun()
 
-# --- DETTES ---
+# --- MODULE DETTES ---
 elif menu == "📉 DETTES":
     st.subheader("📉 Dettes")
     for did, cl, mt in run_db("SELECT id, client_nom, montant_du FROM dettes", fetch=True):
         with st.expander(f"{cl} - Dû: {mt:,.2f} $"):
-            tr = st.number_input("Tranche ($)", 0.0, float(mt), key=f"t_{did}")
-            if st.button(f"Payer {cl}", key=f"b_{did}"):
+            tr = st.number_input("Payer Tranche ($)", 0.0, float(mt), key=f"t_{did}")
+            if st.button(f"Confirmer {cl}", key=f"b_{did}"):
                 nr = mt - tr
                 if nr <= 0.01: run_db("DELETE FROM dettes WHERE id=?", (did,))
                 else: run_db("UPDATE dettes SET montant_du=? WHERE id=?", (nr, did))
                 st.rerun()
 
-# --- CONFIG ---
+# --- MODULE CONFIG ---
 elif menu == "⚙️ CONFIG" and st.session_state.user_role == "ADMIN":
     with st.form("cfg"):
         st.subheader("⚙️ Config")
@@ -212,6 +233,16 @@ elif menu == "⚙️ CONFIG" and st.session_state.user_role == "ADMIN":
         tx = st.number_input("Taux (1$=?)", value=C_TAUX)
         if st.form_submit_button("SAUVEGARDER"):
             run_db("UPDATE config SET entreprise=?, adresse=?, rccm=?, nif=?, id_nat=?, telephone=?, taux=? WHERE id=1", (e.upper(), a, r, n, i, t, tx)); st.rerun()
+
+# --- MODULE USERS ---
+elif menu == "👥 USERS" and st.session_state.user_role == "ADMIN":
+    st.subheader("👥 Users")
+    with st.form("u"):
+        nu = st.text_input("Nom"); np = st.text_input("Pass", type="password"); nr = st.selectbox("Rôle", ["ADMIN", "VENDEUR"])
+        if st.form_submit_button("AJOUTER"):
+            run_db("INSERT INTO users VALUES (?,?,?)", (nu, make_hashes(np), nr)); st.rerun()
+    for un, ur in run_db("SELECT username, role FROM users", fetch=True):
+        if un != "admin" and st.button(f"Supprimer {un}"): run_db("DELETE FROM users WHERE username=?", (un,)); st.rerun()
 
 # --- ACCUEIL ---
 elif menu == "🏠 ACCUEIL":
