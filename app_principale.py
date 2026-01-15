@@ -44,6 +44,10 @@ def init_db():
 
 init_db()
 
+# --- SÉCURITÉ ANTI-INDEXERROR ---
+if not run_db("SELECT * FROM config WHERE id=1", fetch=True):
+    run_db("INSERT INTO config VALUES (1, 'BALIKA ERP', 'ADRESSE', '000', 2850.0, 'Bienvenue')")
+
 # Récupération de la configuration
 config_data = run_db("SELECT entreprise, message, taux, adresse, telephone FROM config WHERE id=1", fetch=True)
 if config_data:
