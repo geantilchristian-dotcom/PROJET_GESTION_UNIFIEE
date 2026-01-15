@@ -31,24 +31,24 @@ def make_hashes(password): return hashlib.sha256(str.encode(password)).hexdigest
 # 2. INITIALISATION BASE DE DONNÉES
 # ==========================================
 def init_db():
+    # Création des tables
     run_db("CREATE TABLE IF NOT EXISTS produits (id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, stock_initial INTEGER, stock_actuel INTEGER, prix_vente REAL, devise_origine TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client_nom TEXT, total_val REAL, acompte REAL, reste REAL, details TEXT, devise TEXT, date_v TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS dettes (id INTEGER PRIMARY KEY AUTOINCREMENT, client_nom TEXT, montant_du REAL, devise TEXT, articles TEXT, sale_ref TEXT, date_d TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY, entreprise TEXT, adresse TEXT, telephone TEXT, taux REAL, message TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT, avatar BLOB)")
     
+    # Insertion des données par défaut si vide (Important pour le Cloud)
     if not run_db("SELECT * FROM users WHERE username='admin'", fetch=True):
         run_db("INSERT INTO users VALUES (?,?,?,?)", ("admin", make_hashes("admin123"), "ADMIN", None))
+    
     if not run_db("SELECT * FROM config WHERE id=1", fetch=True):
         run_db("INSERT INTO config VALUES (1, 'BALIKA ERP', 'ADRESSE', '000', 2850.0, 'Bienvenue')")
 
+# EXECUTION DE L'INITIALISATION AVANT LA LECTURE
 init_db()
 
-# --- SÉCURITÉ ANTI-INDEXERROR ---
-if not run_db("SELECT * FROM config WHERE id=1", fetch=True):
-    run_db("INSERT INTO config VALUES (1, 'BALIKA ERP', 'ADRESSE', '000', 2850.0, 'Bienvenue')")
-
-# Récupération de la configuration
+# Récupération sécurisée de la configuration
 config_data = run_db("SELECT entreprise, message, taux, adresse, telephone FROM config WHERE id=1", fetch=True)
 if config_data:
     C_ENT, C_MSG, C_TAUX, C_ADR, C_TEL = config_data[0]
@@ -145,7 +145,6 @@ elif st.session_state.page == "CAISSE":
             st.write("### Articles dans le panier")
             for art, qte in list(st.session_state.panier.items()):
                 pb = imap[art]['p']
-                # Conversion dynamique
                 if imap[art]['d'] == "USD" and mv == "CDF": pf = pb * C_TAUX
                 elif imap[art]['d'] == "CDF" and mv == "USD": pf = pb / C_TAUX
                 else: pf = pb
@@ -177,7 +176,6 @@ elif st.session_state.page == "CAISSE":
                 st.session_state.panier = {}
                 st.rerun()
     else:
-        # --- AFFICHAGE DE LA FACTURE ---
         f = st.session_state.last_fac
         st.button("⬅️ NOUVELLE VENTE", on_click=lambda: st.session_state.update({"last_fac": None}))
         fmt = st.radio("Format d'impression", ["80mm", "A4"], horizontal=True)
@@ -212,7 +210,7 @@ elif st.session_state.page == "STOCK":
     st.write("### Inventaire complet")
     stk_data = run_db("SELECT id, designation, stock_initial, stock_actuel, prix_vente, devise_origine FROM produits", fetch=True)
     if stk_data:
-        df_stk = pd.DataFrame(stk_data, columns=["ID", "Désignation", "Stock Initial", "Stock Actuel", "Prix", "Devise"])
+        df_stk = pd.DataFrame(stk_data, columns=["ID", "Désignation", "Stock Initial", "Stock Actual", "Prix", "Devise"])
         st.dataframe(df_stk, use_container_width=True)
         
         for r in stk_data:
@@ -270,17 +268,14 @@ elif st.session_state.page == "CONFIG":
     
     st.write("---")
     st.error("⚠️ ZONE DE DANGER")
-    confirm = st.checkbox("Je confirme vouloir réinitialiser TOUT le compte (Nouvelle entreprise)")
+    confirm = st.checkbox("Je confirme vouloir réinitialiser TOUT le compte")
     if st.button("🔥 RÉINITIALISER TOUTES LES DONNÉES"):
         if confirm:
             for table in ["produits", "ventes", "dettes", "users"]:
                 run_db(f"DELETE FROM {table}")
             run_db("INSERT INTO users (username, password, role) VALUES (?,?,?)", ("admin", make_hashes("admin123"), "ADMIN"))
-            st.success("Toutes les données ont été effacées. Reconnexion requise.")
             st.session_state.auth = False
             st.rerun()
-        else:
-            st.warning("Veuillez cocher la case de confirmation avant de réinitialiser.")
 
 # --- UTILISATEURS ---
 elif st.session_state.page == "USERS":
@@ -307,7 +302,5 @@ elif st.session_state.page == "RAPPORT":
     if data:
         df = pd.DataFrame(data, columns=["Date", "Référence", "Client", "Total", "Devise", "Dette Restante"])
         st.dataframe(df, use_container_width=True)
-    else:
-        st.info("Aucune vente enregistrée pour le moment.")
     if st.button("🔄 ACTUALISER LES DONNÉES"): 
         st.rerun()
