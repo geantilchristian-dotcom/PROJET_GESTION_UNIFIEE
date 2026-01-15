@@ -2,267 +2,227 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
-import streamlit.components.v1 as components
-import io
+import random
+import hashlib
 
 # ==========================================
-# 1. DESIGN & STYLE (STRICTE CONFORMITÉ)
+# 1. CONFIGURATION & STYLE (ANTI-CRASH)
 # ==========================================
-st.set_page_config(page_title="ANASH WEB 2026", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ANASH ERP v133", layout="wide")
 
 st.markdown("""
     <style>
-    /* Fond global blanc */
-    .stApp { background-color: #FFFFFF !important; }
-    
-    /* Sidebar Bleu Foncé avec texte blanc */
-    [data-testid="stSidebar"] { background-color: #002D62 !important; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-weight: 800 !important; }
-
-    /* CADRE DU TOTAL (COLORED FRAME) */
-    .total-container {
-        background: linear-gradient(135deg, #0047AB, #002D62);
-        color: white !important;
-        border-radius: 15px; 
-        padding: 20px; 
-        text-align: center; 
-        margin-bottom: 25px;
-        border: 4px solid #001A3A;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-    .total-label { font-size: 1.1rem; font-weight: bold; opacity: 0.9; }
-    .total-montant { font-size: 3.2rem !important; font-weight: 900 !important; color: white !important; margin: 5px 0; line-height: 1; }
-    .total-devise { font-size: 1.4rem; font-weight: bold; color: #FFD700 !important; }
-
-    /* CODE : FOND BLEU / TEXTE BLANC */
-    code, pre { 
-        background-color: #0047AB !important; 
-        color: white !important; 
-        font-weight: bold; 
-        padding: 15px; 
-        border-radius: 8px; 
-    }
-
-    /* ZONE D'IMPRESSION PRO */
-    #printable-area {
-        background-color: white !important; 
-        padding: 35px; 
-        border: 2px solid #000;
-        max-width: 700px; 
-        margin: auto; 
-        color: black !important; 
-        font-family: 'Arial', sans-serif;
-    }
-    .print-header { border-bottom: 3px solid #002D62; text-align: center; margin-bottom: 20px; color: black !important; }
-    
+    /* TECHNIQUE FINALE : Impression par CSS uniquement pour éviter les erreurs Node JS */
     @media print {
-        body * { visibility: hidden; }
-        #printable-area, #printable-area * { visibility: visible; }
-        #printable-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; }
+        header, footer, .stSidebar, .stButton, .no-print, [data-testid="stHeader"], .stRadio, .stSelectbox {
+            display: none !important;
+        }
+        .stApp { background-color: white !important; }
+        .print-area { 
+            display: block !important; 
+            width: 100% !important; 
+            color: black !important;
+        }
+    }
+    
+    /* Design Application Mobile-First */
+    .stApp { background-color: #FFFFFF !important; }
+    code { color: white !important; background-color: #0047AB !important; padding: 2px 5px; border-radius: 4px; }
+    
+    .total-frame {
+        background: linear-gradient(135deg, #0047AB 0%, #002D6B 100%);
+        color: white !important; padding: 20px; border-radius: 12px; text-align: center;
+        border: 4px solid #FFD700; font-size: 28px; font-weight: bold; margin: 10px 0;
+    }
+    
+    .facture-box { background: white; border: 1px solid #000; padding: 20px; color: black !important; font-family: 'Arial'; }
+    .ticket-thermique {
+        background: white; border: 1px dashed #000; padding: 10px; color: black !important;
+        width: 280px; margin: auto; font-family: 'Courier New'; font-size: 12px;
+    }
+    
+    .stButton>button { 
+        width: 100% !important; height: 55px !important; 
+        background-color: #0047AB !important; color: white !important; 
+        border-radius: 10px !important; font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. GESTION BASE DE DONNÉES
+# 2. MOTEUR DE BASE DE DONNÉES
 # ==========================================
-DB_NAME = "anash_v41_final.db"
+def make_hashes(password): return hashlib.sha256(str.encode(password)).hexdigest()
+def check_hashes(password, hashed_text): return make_hashes(password) == hashed_text
+
+def run_db(query, params=(), fetch=False):
+    with sqlite3.connect('anash_erp_v133.db', timeout=30) as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, params)
+            conn.commit()
+            if fetch: return cursor.fetchall()
+        except Exception as e: return str(e)
+    return None
 
 def init_db():
-    with sqlite3.connect(DB_NAME) as conn:
-        conn.execute("""CREATE TABLE IF NOT EXISTS settings (
-            id INTEGER PRIMARY KEY, entreprise TEXT, entete_manuel TEXT, 
-            taux REAL, pwd_admin TEXT, pwd_vendeur TEXT)""")
-        conn.execute("""CREATE TABLE IF NOT EXISTS stock (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, qte_actuel INTEGER, prix_v REAL)""")
-        conn.execute("""CREATE TABLE IF NOT EXISTS ventes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, date TEXT, client_info TEXT, 
-            total_facture REAL, deja_paye REAL, devise TEXT, vendeur TEXT, items_json TEXT)""")
-        if conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0] == 0:
-            conn.execute("INSERT INTO settings VALUES (1, 'ANASH BUSINESS', 'Kinshasa, RDC\\nRCCM: 00-000-00', 2850.0, 'ADMIN', '1234')")
-        conn.commit()
-
+    run_db("CREATE TABLE IF NOT EXISTS produits (id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, stock_initial INTEGER, stock_actuel INTEGER, prix_vente REAL)")
+    run_db("CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client_nom TEXT, total_usd REAL, acompte REAL, reste REAL, details TEXT, statut TEXT, devise TEXT, date_v DATE DEFAULT (date('now')))")
+    run_db("CREATE TABLE IF NOT EXISTS dettes (id INTEGER PRIMARY KEY AUTOINCREMENT, client_nom TEXT, montant_du REAL, details TEXT, date_d DATE DEFAULT (date('now')))")
+    run_db("CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY, entreprise TEXT, adresse TEXT, rccm TEXT, nif TEXT, id_nat TEXT, telephone TEXT, taux REAL)")
+    run_db("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)")
+    if not run_db("SELECT * FROM users WHERE username='admin'", fetch=True):
+        run_db("INSERT INTO users VALUES (?,?,?)", ("admin", make_hashes("admin123"), "ADMIN"))
 init_db()
 
-def db_query(sql, params=(), select=True):
-    with sqlite3.connect(DB_NAME) as conn:
-        if select: return pd.read_sql_query(sql, conn, params=params)
-        conn.execute(sql, params); conn.commit(); return True
+# Chargement Paramètres Entreprise (7 Champs)
+c_data = run_db("SELECT * FROM config WHERE id=1", fetch=True)
+if not c_data:
+    run_db("INSERT INTO config VALUES (1, 'VOTRE BOUTIQUE', 'ADRESSE', 'RCCM', 'NIF', 'IDNAT', '+243', 2850.0)")
+    c_data = run_db("SELECT * FROM config WHERE id=1", fetch=True)
+_, C_ENT, C_ADR, C_RCCM, C_NIF, C_IDNAT, C_TEL, C_TAUX = c_data[0]
+
+# Initialisation Session
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'panier' not in st.session_state: st.session_state.panier = {}
+if 'ref_fac' not in st.session_state: st.session_state.ref_fac = f"FAC-{datetime.now().strftime('%y%m%d')}-{random.randint(100, 999)}"
 
 # ==========================================
-# 3. ÉTATS DE SESSION
+# 3. ÉCRAN DE CONNEXION
 # ==========================================
-if "auth" not in st.session_state: st.session_state.auth = False
-if "panier" not in st.session_state: st.session_state.panier = {}
-if "etape" not in st.session_state: st.session_state.etape = "caisse"
-if "temp_facture" not in st.session_state: st.session_state.temp_facture = None
-
-CONFIG = db_query("SELECT * FROM settings WHERE id=1").iloc[0]
-
-# --- LOGIN ---
-if not st.session_state.auth:
-    st.title("🔐 ACCÈS SYSTÈME")
-    role_log = st.selectbox("Position", ["VENDEUR", "ADMIN"])
-    pwd_log = st.text_input("Mot de passe", type="password")
-    if st.button("🚀 SE CONNECTER", use_container_width=True):
-        check = CONFIG['pwd_admin'] if role_log == "ADMIN" else CONFIG['pwd_vendeur']
-        if pwd_log == str(check):
-            st.session_state.auth, st.session_state.role = True, role_log
-            st.rerun()
-        else: st.error("Code erroné.")
+if not st.session_state.logged_in:
+    st.markdown("<h2 style='text-align:center;'>🔐 CONNEXION ANASH ERP</h2>", unsafe_allow_html=True)
+    _, cent, _ = st.columns([1, 1.5, 1])
+    with cent:
+        u = st.text_input("Utilisateur")
+        p = st.text_input("Mot de passe", type="password")
+        if st.button("ACCÉDER"):
+            res = run_db("SELECT password, role FROM users WHERE username=?", (u,), fetch=True)
+            if res and check_hashes(p, res[0][0]):
+                st.session_state.logged_in, st.session_state.user_role, st.session_state.username = True, res[0][1], u
+                st.rerun()
+            else: st.error("Identifiants incorrects")
     st.stop()
 
 # ==========================================
-# 4. NAVIGATION
+# 4. NAVIGATION & MODULES
 # ==========================================
-menu_list = ["🛒 CAISSE", "📉 DETTES", "📦 STOCK", "📊 RAPPORTS", "💰 CLÔTURE", "⚙️ CONFIG"]
-if st.session_state.role == "VENDEUR":
-    menu_list = ["🛒 CAISSE", "📉 DETTES", "📦 STOCK"]
+st.sidebar.title(f"👤 {st.session_state.username}")
+opt = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK", "📉 DETTES", "👥 UTILISATEURS", "⚙️ CONFIG"] if st.session_state.user_role == "ADMIN" else ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES"]
+menu = st.sidebar.radio("MENU PRINCIPAL", opt)
 
-menu = st.sidebar.radio("NAVIGATION", menu_list)
-st.sidebar.divider()
-if st.sidebar.button("🚪 Déconnexion"):
-    st.session_state.clear(); st.rerun()
+# --- MODULE UTILISATEURS ---
+if menu == "👥 UTILISATEURS" and st.session_state.user_role == "ADMIN":
+    st.header("👥 Gestion des accès")
+    with st.form("user_f"):
+        nu = st.text_input("Nom de l'utilisateur")
+        np = st.text_input("Mot de passe", type="password")
+        nr = st.selectbox("Niveau d'accès", ["ADMIN", "VENDEUR"])
+        if st.form_submit_button("CRÉER COMPTE"):
+            run_db("INSERT INTO users VALUES (?,?,?)", (nu, make_hashes(np), nr)); st.rerun()
+    for un, ur in run_db("SELECT username, role FROM users", fetch=True):
+        c1, c2 = st.columns([3, 1])
+        c1.write(f"**{un}** - {ur}")
+        if un != "admin" and c2.button("Supprimer", key=f"d_u_{un}"):
+            run_db("DELETE FROM users WHERE username=?", (un,)); st.rerun()
 
-# --- 🛒 CAISSE ---
-if menu == "🛒 CAISSE":
-    devise = st.sidebar.selectbox("Devise d'encaissement", ["USD", "CDF"])
-    total_usd = sum(v['pu'] * v['qty'] for v in st.session_state.panier.values())
-    total_final = total_usd if devise == "USD" else total_usd * CONFIG['taux']
-
-    if st.session_state.etape == "facture" and st.session_state.temp_facture:
-        f = st.session_state.temp_facture
-        reste = f['total'] - f['paye']
-        
-        st.markdown(f"""
-            <div id="printable-area">
-                <div class="print-header"><h1>{CONFIG['entreprise']}</h1>{CONFIG['entete_manuel']}</div>
-                <div style="display:flex; justify-content:space-between; color:black;">
-                    <p><b>CLIENT :</b> {f['client']}</p>
-                    <p><b>RÉF :</b> {f['ref']}<br><b>DATE :</b> {datetime.now().strftime('%d/%m/%Y')}</p>
-                </div>
-                <table style="width:100%; color:black; border-collapse:collapse; margin-top:10px;">
-                    <tr style="border-bottom:2px solid black; background:#f2f2f2;">
-                        <th style="padding:8px; text-align:left;">Désignation</th>
-                        <th style="padding:8px;">Qté</th>
-                        <th style="padding:8px; text-align:right;">Total</th>
-                    </tr>
-                    {"".join([f"<tr><td style='padding:8px; border-bottom:1px solid #ddd;'>{v['nom']}</td><td align='center'>{v['qty']}</td><td align='right'>{int(v['qty']*v['pu']):,} {f['devise']}</td></tr>" for v in f['items']])}
-                </table>
-                <div style="text-align:right; margin-top:20px; color:black; font-weight:bold; font-size:1.2rem; border-top:2px solid black; padding-top:10px;">
-                    TOTAL : {int(f['total']):,} {f['devise']}<br>
-                    PAYÉ : {int(f['paye']):,} {f['devise']}<br>
-                    <span style="color:red;">RESTE : {int(reste):,} {f['devise']}</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        c1, c2, c3 = st.columns(3)
-        if c1.button("💾 ENREGISTRER LA VENTE", use_container_width=True):
-            items_txt = ", ".join([f"{v['nom']} (x{v['qty']})" for v in f['items']])
-            db_query("INSERT INTO ventes (ref, date, client_info, total_facture, deja_paye, devise, vendeur, items_json) VALUES (?,?,?,?,?,?,?,?)",
-                     (f['ref'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f['client'], f['total'], f['paye'], f['devise'], st.session_state.role, items_txt), False)
-            st.session_state.panier, st.session_state.etape, st.session_state.temp_facture = {}, "caisse", None
+# --- MODULE CAISSE ---
+elif menu == "🛒 CAISSE":
+    col_v, col_f = st.columns([1, 1.3])
+    with col_v:
+        devise = st.radio("DEVISE :", ["USD", "CDF"], horizontal=True)
+        items = run_db("SELECT designation, prix_vente, stock_actuel FROM produits WHERE stock_actuel > 0", fetch=True)
+        art_map = {r[0]: {'p': r[1], 's': r[2]} for r in items} if items else {}
+        sel = st.selectbox("Article", ["---"] + list(art_map.keys()))
+        if st.button("➕ AJOUTER") and sel != "---":
+            st.session_state.panier[sel] = st.session_state.panier.get(sel, 0) + 1
             st.rerun()
-        if c2.button("🖨️ IMPRIMER", use_container_width=True):
-            components.html("<script>window.print();</script>", height=0)
-        if c3.button("🔙 RETOUR PANIER", use_container_width=True):
-            st.session_state.etape = "caisse"; st.rerun()
-
-    else:
-        # CADRE TOTAL COLORÉ
-        m_alt = int(total_usd * CONFIG['taux']) if devise == "USD" else int(total_usd / CONFIG['taux'])
-        d_alt = "CDF" if devise == "USD" else "USD"
-        st.markdown(f"<div class='total-container'><div class='total-label'>MONTANT À PAYER</div><div class='total-montant'>{int(total_final):,}</div><div class='total-devise'>{devise} | {m_alt:,} {d_alt}</div></div>", unsafe_allow_html=True)
-
-        col1, col2 = st.columns([1, 1.3])
-        with col1:
-            st.write("### ➕ Articles")
-            df_s = db_query("SELECT * FROM stock")
-            art = st.selectbox("Sélectionner l'article", ["---"] + df_s['designation'].tolist())
-            if st.button("➕ Ajouter au Panier", use_container_width=True) and art != "---":
-                row = df_s[df_s['designation'] == art].iloc[0]
-                pu_it = row['prix_v'] if devise == "USD" else row['prix_v'] * CONFIG['taux']
-                st.session_state.panier[str(row['id'])] = {'nom': art, 'pu': pu_it, 'qty': 1}
-                st.rerun()
-        with col2:
-            st.write("### 🛒 Mon Panier")
-            cli = st.text_input("Nom du Client")
-            p_recu = st.number_input(f"Acompte Versé ({devise})", 0.0)
-            for k, v in list(st.session_state.panier.items()):
-                ca, cb = st.columns([4, 1])
-                v['qty'] = ca.number_input(f"{v['nom']}", 1, 1000, v['qty'], key=f"q_{k}")
-                if cb.button("🗑️", key=f"d_{k}"): del st.session_state.panier[k]; st.rerun()
-            if st.button("🏁 PRÉPARER FACTURE", use_container_width=True) and cli and st.session_state.panier:
-                st.session_state.temp_facture = {"ref": f"FAC-{datetime.now().strftime('%H%M%S')}", "client": cli, "items": list(st.session_state.panier.values()), "total": total_final, "devise": devise, "paye": p_recu}
-                st.session_state.etape = "facture"; st.rerun()
-
-# --- 💰 CLÔTURE (ADMIN) ---
-elif menu == "💰 CLÔTURE":
-    st.title("💰 CLÔTURE JOURNALIÈRE")
-    dt = st.date_input("Date du rapport", datetime.now()).strftime('%Y-%m-%d')
-    df_j = db_query(f"SELECT * FROM ventes WHERE date LIKE '{dt}%'")
-    
-    if not df_j.empty:
-        c_usd = df_j[df_j['devise'] == 'USD']['deja_paye'].sum()
-        c_cdf = df_j[df_j['devise'] == 'CDF']['deja_paye'].sum()
         
-        st.markdown(f"""
-            <div id="printable-area">
-                <div class="print-header"><h1>RAPPORT DE CAISSE - {dt}</h1><b>{CONFIG['entreprise']}</b></div>
-                <h3 style="color:black;">RÉSUMÉ CASH</h3>
-                <p style="font-size:1.5rem; color:black;"><b>TOTAL USD : {int(c_usd):,} $</b></p>
-                <p style="font-size:1.5rem; color:black;"><b>TOTAL CDF : {int(c_cdf):,} FC</b></p>
-                <hr>
-                <h3 style="color:black;">DÉTAIL DES ARTICLES SORTIS</h3>
-                <table style="width:100%; color:black; border-collapse:collapse;">
-                    <tr style="background:#eee;"><th>Réf</th><th>Client</th><th>Articles</th><th align="right">Montant</th></tr>
-                    {"".join([f"<tr><td>{r['ref']}</td><td>{r['client_info']}</td><td>{r['items_json']}</td><td align='right'>{int(r['total_facture'])} {r['devise']}</td></tr>" for _, r in df_j.iterrows()])}
-                </table>
-            </div>
-        """, unsafe_allow_html=True)
-        if st.button("🖨️ IMPRIMER LE RAPPORT"):
-            components.html("<script>window.print();</script>", height=0)
-    else: st.warning("Aucune transaction pour cette date.")
+        total_usd = 0.0
+        rows_html = ""
+        for art, qte in list(st.session_state.panier.items()):
+            nq = st.number_input(f"Qté {art}", 1, art_map[art]['s'], qte, key=f"q_{art}")
+            st.session_state.panier[art] = nq
+            stut = nq * art_map[art]['p']
+            total_usd += stut
+            rows_html += f"<tr><td>{art}</td><td align='center'>{nq}</td><td align='right'>{stut:,.2f}$</td></tr>"
+            if st.button(f"🗑️ Retirer {art}"): del st.session_state.panier[art]; st.rerun()
 
-# --- 📊 RAPPORTS (SUPPRESSION) ---
-elif menu == "📊 RAPPORTS":
-    st.title("📊 HISTORIQUE DES VENTES")
-    df_v = db_query("SELECT * FROM ventes ORDER BY id DESC")
-    st.dataframe(df_v, use_container_width=True)
+    with col_f:
+        c_nom = st.text_input("NOM DU CLIENT", "PASSAGER")
+        tx_m = C_TAUX if devise == "CDF" else 1.0
+        tot_p = total_usd * tx_m
+        st.markdown(f'<div class="total-frame">NET À PAYER : {tot_p:,.2f} {devise}</div>', unsafe_allow_html=True)
+        acompte = st.number_input(f"PAYÉ ({devise})", 0.0)
+        reste = max(0.0, tot_p - acompte)
+        fmt = st.radio("FORMAT", ["THERMIQUE", "A4"], horizontal=True)
+
+        if total_usd > 0:
+            st.markdown(f"""
+            <div class="print-area">
+                <div class="{"ticket-thermique" if fmt == "THERMIQUE" else "facture-box"}">
+                    <table width="100%"><tr><td><b>{C_ENT}</b><br>{C_ADR}<br>{C_TEL}</td><td align="right">RCCM: {C_RCCM}<br>NIF: {C_NIF}</td></tr></table>
+                    <hr><center><h3>FACTURE {st.session_state.ref_fac}</h3></center>
+                    <table width="100%" border="1" style="border-collapse:collapse;">
+                        <tr><th>Désignation</th><th>Qté</th><th>Total</th></tr>{rows_html}
+                    </table>
+                    <h3 align="right">TOTAL : {tot_p:,.2f} {devise}</h3>
+                    <p align="right">Payé: {acompte:,.2f} | Reste: {reste:,.2f}</p>
+                </div>
+            </div>""", unsafe_allow_html=True)
+            
+            if st.button("🖨️ IMPRIMER"):
+                st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
+
+        if st.button("🚀 VALIDER LA VENTE"):
+            if st.session_state.panier:
+                ac_usd = acompte / tx_m
+                re_usd = total_usd - ac_usd
+                det = ", ".join([f"{n}(x{q})" for n, q in st.session_state.panier.items()])
+                run_db("INSERT INTO ventes (ref, client_nom, total_usd, acompte, reste, details, statut, devise) VALUES (?,?,?,?,?,?,?,?)", (st.session_state.ref_fac, c_nom.upper(), total_usd, ac_usd, re_usd, det, "SOLDE" if re_usd <= 0.01 else "DETTE", devise))
+                if re_usd > 0.01: run_db("INSERT INTO dettes (client_nom, montant_du, details) VALUES (?,?,?)", (c_nom.upper(), re_usd, det))
+                for n, q in st.session_state.panier.items(): run_db("UPDATE produits SET stock_actuel = stock_actuel - ? WHERE designation = ?", (q, n))
+                st.session_state.panier = {}; st.session_state.ref_fac = f"FAC-{datetime.now().strftime('%y%m%d')}-{random.randint(100, 999)}"; st.rerun()
+
+# --- MODULE STOCK ---
+elif menu == "📦 STOCK" and st.session_state.user_role == "ADMIN":
+    st.subheader("📦 Gestion du Stock")
+    with st.form("st_f"):
+        c1, c2, c3 = st.columns(3); dn = c1.text_input("Désignation"); pr = c2.number_input("Prix Vente ($)"); qt = c3.number_input("Stock", step=1)
+        if st.form_submit_button("AJOUTER PRODUIT"):
+            run_db("INSERT INTO produits (designation, stock_initial, stock_actuel, prix_vente) VALUES (?,?,?,?)", (dn.upper(), qt, qt, pr)); st.rerun()
     
-    if st.session_state.role == "ADMIN":
-        st.divider()
-        st.subheader("⚠️ SUPPRIMER UNE ERREUR")
-        ref_sel = st.selectbox("Référence Facture", ["---"] + df_v['ref'].tolist())
-        if st.button("🔥 SUPPRIMER DÉFINITIVEMENT") and ref_sel != "---":
-            db_query("DELETE FROM ventes WHERE ref = ?", (ref_sel,), False)
-            st.success("Vente effacée !"); st.rerun()
+    for pid, d, p, s in run_db("SELECT id, designation, prix_vente, stock_actuel FROM produits", fetch=True):
+        with st.expander(f"{d} - {s} restants"):
+            np = st.number_input(f"Nouveau Prix ($)", value=float(p), key=f"p_{pid}")
+            if st.button("Modifier", key=f"s_{pid}"): run_db("UPDATE produits SET prix_vente=? WHERE id=?", (np, pid)); st.rerun()
+            if st.button("🗑️ Supprimer l'article", key=f"d_{pid}"): run_db("DELETE FROM produits WHERE id=?", (pid,)); st.rerun()
 
-# --- 📦 STOCK ---
-elif menu == "📦 STOCK":
-    st.title("📦 GESTION DU STOCK")
-    if st.session_state.role == "ADMIN":
-        with st.form("stock"):
-            d, q, p = st.text_input("Désignation"), st.number_input("Qté initiale", 0), st.number_input("Prix Vente ($)", 0.0)
-            if st.form_submit_button("💾 Enregistrer"):
-                db_query("INSERT INTO stock (designation, qte_actuel, prix_v) VALUES (?,?,?)", (d, q, p), False); st.rerun()
-    st.dataframe(db_query("SELECT * FROM stock"), use_container_width=True)
-
-# --- 📉 DETTES ---
+# --- MODULE DETTES ---
 elif menu == "📉 DETTES":
-    st.title("📉 LISTE DES CRÉDITS")
-    df_d = db_query("SELECT ref, date, client_info, (total_facture - deja_paye) as Reste, devise FROM ventes WHERE Reste > 0.1")
-    st.dataframe(df_d, use_container_width=True)
+    st.subheader("📉 Paiement par Tranches")
+    for did, cl, mt in run_db("SELECT id, client_nom, montant_du FROM dettes", fetch=True):
+        with st.expander(f"Client: {cl} | Dû: {mt:,.2f} $"):
+            tr = st.number_input("Montant de la tranche ($)", 0.0, float(mt), key=f"t_{did}")
+            if st.button(f"Enregistrer paiement {cl}", key=f"b_{did}"):
+                nr = mt - tr
+                if nr <= 0.01: run_db("DELETE FROM dettes WHERE id=?", (did,))
+                else: run_db("UPDATE dettes SET montant_du=? WHERE id=?", (nr, did))
+                st.rerun()
 
-# --- ⚙️ CONFIG ---
-elif menu == "⚙️ CONFIG":
-    st.title("⚙️ PARAMÈTRES")
-    with st.form("config"):
-        n = st.text_input("Entreprise", CONFIG['entreprise'])
-        e = st.text_area("Entête", CONFIG['entete_manuel'])
-        t = st.number_input("Taux", value=float(CONFIG['taux']))
-        if st.form_submit_button("Mettre à jour"):
-            db_query("UPDATE settings SET entreprise=?, entete_manuel=?, taux=? WHERE id=1", (n, e, t), False); st.rerun()
-    with open(DB_NAME, "rb") as f:
-        st.download_button("📥 BACKUP (.db)", f, file_name="anash_db.db")
+# --- MODULE CONFIG ---
+elif menu == "⚙️ CONFIG" and st.session_state.user_role == "ADMIN":
+    with st.form("cfg_f"):
+        st.subheader("⚙️ Paramètres de l'Entreprise")
+        e = st.text_input("Boutique", value=C_ENT); a = st.text_input("Adresse", value=C_ADR); t = st.text_input("Tél", value=C_TEL)
+        c1, c2, c3 = st.columns(3); r = c1.text_input("RCCM", value=C_RCCM); n = c2.text_input("NIF", value=C_NIF); i = c3.text_input("IDNAT", value=C_IDNAT)
+        tx = st.number_input("Taux (1$=?)", value=C_TAUX)
+        if st.form_submit_button("SAUVEGARDER CONFIG"):
+            run_db("UPDATE config SET entreprise=?, adresse=?, rccm=?, nif=?, id_nat=?, telephone=?, taux=? WHERE id=1", (e.upper(), a, r, n, i, t, tx)); st.rerun()
+
+# --- ACCUEIL ---
+elif menu == "🏠 ACCUEIL":
+    v = run_db("SELECT SUM(total_usd) FROM ventes", fetch=True)[0][0] or 0
+    d = run_db("SELECT SUM(montant_du) FROM dettes", fetch=True)[0][0] or 0
+    st.metric("VENTES TOTALES ($)", f"{v:,.2f} $")
+    st.metric("DETTES TOTALES ($)", f"{d:,.2f} $")
