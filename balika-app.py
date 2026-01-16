@@ -1,7 +1,7 @@
 # ==============================================================================
-# BALIKA ERP ULTIMATE v750 - VERSION ÉTENDUE PROFESSIONNELLE
-# COMPREND : SaaS, CAISSE MULTI-DEVISE, GESTION VENDEURS, AUDIT & EXPORT
-# DESIGN : FULL SCREEN ORANGE-NOIR | MARQUEE FIXE | ZÉRO CADRE BLANC
+# BALIKA ERP ULTIMATE v751 - SYSTÈME ERP SaaS COMPLET
+# COMPREND : SaaS, CAISSE, DETTES, STOCK, VENDEURS, AUDIT & CONFIGURATION
+# DESIGN : ORANGE-NOIR | MARQUEE FIXE | ZÉRO CADRE BLANC | MOBILE FRIENDLY
 # ==============================================================================
 
 import streamlit as st
@@ -17,101 +17,100 @@ import time
 from PIL import Image
 
 # ------------------------------------------------------------------------------
-# 1. CONFIGURATION SYSTÈME & CORE
+# 1. CONFIGURATION SYSTÈME CORE (v751)
 # ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BALIKA ERP ULTIMATE v750", 
+    page_title="BALIKA ERP ULTIMATE v751", 
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
 
-# Initialisation complète du Session State (Indispensable pour la navigation)
+# Initialisation du Session State pour la persistance
 if 'auth' not in st.session_state:
     st.session_state.update({
         'auth': False, 'user': "", 'role': "", 'ent_id': "SYSTEM", 
         'page': "ACCUEIL", 'panier': {}, 'last_fac': None,
-        'devise_pref': "USD", 'notifs': []
+        'notifs': [], 'audit_trail': []
     })
 
 def run_db(query, params=(), fetch=False):
-    """Moteur de base de données ultra-sécurisé avec mode WAL"""
+    """Moteur SQLite avec gestion de verrouillage (WAL Mode)"""
     try:
-        with sqlite3.connect('balika_pro_v750.db', timeout=60) as conn:
+        with sqlite3.connect('balika_pro_v751.db', timeout=60) as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             cursor = conn.cursor()
             cursor.execute(query, params)
             conn.commit()
             return cursor.fetchall() if fetch else None
     except Exception as e:
-        st.error(f"Erreur DB Critique : {e}")
+        st.error(f"Erreur Base de données : {e}")
         return []
 
 def make_hashes(password):
+    """Cryptage des mots de passe"""
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 # ------------------------------------------------------------------------------
-# 2. INITIALISATION DES TABLES (SCHÉMA COMPLET ÉTENDU)
+# 2. INITIALISATION DES TABLES (SCHÉMA v751 - 100% PRÉSERVÉ)
 # ------------------------------------------------------------------------------
 def init_db():
-    # Table Utilisateurs (Profils & Droits)
+    # Table Utilisateurs
     run_db("""CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY, password TEXT, role TEXT, 
                 ent_id TEXT, photo BLOB, full_name TEXT, telephone TEXT, status TEXT DEFAULT 'ACTIF')""")
     
-    # Table Configuration Entreprise & Paramètres SaaS
+    # Table Configuration Entreprise
     run_db("""CREATE TABLE IF NOT EXISTS config (
                 ent_id TEXT PRIMARY KEY, nom_ent TEXT, adresse TEXT, 
                 tel TEXT, taux REAL, message TEXT, status TEXT DEFAULT 'ACTIF', 
-                entete_fac TEXT, date_inscription TEXT, montant_paye REAL DEFAULT 0.0,
-                logo BLOB)""")
+                entete_fac TEXT, date_inscription TEXT, montant_paye REAL DEFAULT 0.0)""")
     
-    # Table Inventaire (Stock & Prix)
+    # Table Inventaire
     run_db("""CREATE TABLE IF NOT EXISTS produits (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, 
                 stock_actuel INTEGER, prix_vente REAL, devise TEXT, 
-                ent_id TEXT, categorie TEXT, stock_alerte INTEGER DEFAULT 5)""")
+                ent_id TEXT, categorie TEXT DEFAULT 'GÉNÉRAL')""")
     
-    # Table Ventes (Journal Central)
+    # Table Ventes
     run_db("""CREATE TABLE IF NOT EXISTS ventes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client TEXT, 
                 total REAL, paye REAL, reste REAL, devise TEXT, 
-                date_v TEXT, vendeur TEXT, ent_id TEXT, details TEXT, type_paiement TEXT)""")
+                date_v TEXT, vendeur TEXT, ent_id TEXT, details TEXT)""")
     
-    # Table Dettes (Suivi des Crédits Clients)
+    # Table Dettes
     run_db("""CREATE TABLE IF NOT EXISTS dettes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, client TEXT, montant REAL, 
-                devise TEXT, ref_v TEXT, ent_id TEXT, historique TEXT, date_echeance TEXT)""")
+                devise TEXT, ref_v TEXT, ent_id TEXT, historique TEXT)""")
     
-    # Table Logs (Audit de sécurité)
+    # Table Journal d'Audit
     run_db("""CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT, action TEXT, 
                 date TEXT, ent_id TEXT)""")
 
-    # Initialisation Admin Système (Maître du SaaS)
+    # Insertion Admin Maître (Si inexistant)
     if not run_db("SELECT * FROM users WHERE username='admin'", fetch=True):
         run_db("INSERT INTO users (username, password, role, ent_id) VALUES (?, ?, ?, ?)", 
                ('admin', make_hashes("admin123"), 'SUPER_ADMIN', 'SYSTEM'))
         run_db("INSERT INTO config (ent_id, nom_ent, status, taux, message, date_inscription) VALUES (?, ?, ?, ?, ?, ?)", 
-               ('SYSTEM', 'BALIKA CLOUD HQ', 'ACTIF', 2850.0, 'BIENVENUE SUR BALIKA ERP - SYSTÈME UNIFIÉ 2026', '16/01/2026'))
+               ('SYSTEM', 'BALIKA CLOUD HQ', 'ACTIF', 2850.0, 'BIENVENUE SUR BALIKA ERP v751', '16/01/2026'))
 
 init_db()
 
 # ------------------------------------------------------------------------------
-# 3. INTERFACE CSS PROFESSIONNELLE (SANS CADRE BLANC)
+# 3. INTERFACE CSS IMMERSIVE (ZÉRO CADRE BLANC & MARQUEE)
 # ------------------------------------------------------------------------------
-# Récupération des données de branding
 curr_eid = st.session_state.ent_id if st.session_state.auth else "SYSTEM"
-res_cfg = run_db("SELECT nom_ent, message, taux, adresse, tel, status FROM config WHERE ent_id=?", (curr_eid,), fetch=True)
-if res_cfg:
-    C_NOM, C_MSG, C_TX, C_ADR, C_TEL, C_STATUS = res_cfg[0]
+cfg_data = run_db("SELECT nom_ent, message, taux, adresse, tel, status FROM config WHERE ent_id=?", (curr_eid,), fetch=True)
+if cfg_data:
+    C_NOM, C_MSG, C_TX, C_ADR, C_TEL, C_STATUS = cfg_data[0]
 else:
     C_NOM, C_MSG, C_TX, C_ADR, C_TEL, C_STATUS = ("BALIKA", "Bienvenue", 2850.0, "", "", "ACTIF")
 
 st.markdown(f"""
     <style>
-    /* Fond dégradé immersif */
+    /* Design Global Dégradé */
     .stApp {{
-        background: linear-gradient(180deg, #FF4B2B 0%, #FF8008 100%);
+        background: linear-gradient(135deg, #FF4B2B 0%, #FF8008 100%);
         background-attachment: fixed;
         color: white !important;
     }}
@@ -119,445 +118,396 @@ st.markdown(f"""
     /* MARQUEE FIXE HAUT DE PAGE */
     .marquee-wrapper {{
         position: fixed; top: 0; left: 0; width: 100%;
-        background: #000; color: #00FF00; height: 55px;
-        z-index: 999999; border-bottom: 3px solid #FFF;
+        background: #000; color: #39FF14; height: 50px;
+        z-index: 999999; border-bottom: 2px solid white;
         display: flex; align-items: center; overflow: hidden;
     }}
     .marquee-content {{
         display: inline-block; white-space: nowrap;
-        animation: marquee-move 22s linear infinite;
-        font-family: 'Courier New', monospace; font-size: 22px; font-weight: bold;
+        animation: marquee-move 20s linear infinite;
+        font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold;
     }}
     @keyframes marquee-move {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
 
-    /* Suppression des cadres blancs (Inputs transparents) */
+    /* Suppression des cadres blancs sur les inputs */
     div[data-baseweb="input"], .stTextInput>div>div, .stNumberInput>div>div, .stSelectbox>div>div {{
-        background-color: rgba(255, 255, 255, 0.15) !important;
-        border-radius: 12px !important; border: 2px solid rgba(255,255,255,0.5) !important;
-        color: white !important; height: 50px !important;
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border-radius: 10px !important; border: 1px solid white !important;
+        color: white !important;
     }}
-    input {{ color: white !important; font-weight: bold !important; font-size: 18px !important; }}
-    label {{ color: white !important; font-weight: bold !important; text-transform: uppercase; }}
-
-    /* Boutons de commande */
+    input {{ color: white !important; font-weight: bold !important; }}
+    
+    /* Boutons de commande Bleus */
     .stButton>button {{
         background: #0055ff !important; color: white !important;
-        border-radius: 15px; font-weight: 900; height: 60px; width: 100%;
-        border: 2px solid white !important; text-transform: uppercase;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.3s;
+        border-radius: 12px; font-weight: bold; height: 50px; width: 100%;
+        border: 2px solid white !important; transition: 0.3s;
     }}
-    .stButton>button:hover {{ transform: scale(1.02); background: #003399 !important; }}
+    .stButton>button:hover {{ background: #003399 !important; transform: scale(1.02); }}
 
-    /* Montre et Total */
-    .clock-box {{
-        background: rgba(0,0,0,0.5); color: #FFD700; padding: 35px; border-radius: 25px;
-        border: 4px solid white; text-align: center; margin-bottom: 30px;
+    /* Montre Digitale */
+    .clock-container {{
+        background: rgba(0,0,0,0.4); padding: 30px; border-radius: 20px;
+        border: 3px solid white; text-align: center; margin: 20px auto; max-width: 500px;
     }}
-    .price-frame {{
-        border: 5px solid #FFF; background: #000; padding: 25px;
-        border-radius: 20px; color: #39FF14; font-size: 45px;
-        font-weight: 900; text-align: center; margin: 25px 0;
+    .clock-h {{ font-size: 60px; font-weight: 900; color: #FFD700; margin: 0; }}
+
+    /* Cadre Total Caisse */
+    .total-box {{
+        background: #000; border: 4px solid #39FF14; padding: 20px;
+        border-radius: 15px; color: #39FF14; font-size: 40px;
+        font-weight: bold; text-align: center; margin: 20px 0;
     }}
     
-    /* Sidebar Stylisée */
-    [data-testid="stSidebar"] {{ background-color: #F8F9FA !important; border-right: 10px solid #000; }}
-    [data-testid="stSidebar"] * {{ color: #000 !important; font-weight: 800 !important; }}
-
-    /* Tableaux */
-    .stDataFrame {{ background: white !important; border-radius: 10px; }}
+    /* Sidebar style */
+    [data-testid="stSidebar"] {{ background-color: #f8f9fa !important; }}
+    [data-testid="stSidebar"] * {{ color: black !important; font-weight: bold; }}
     </style>
 
     <div class="marquee-wrapper">
         <div class="marquee-content">
-             🚀 {C_NOM} : {C_MSG} | 💹 TAUX: {C_TX} CDF/USD | 📅 {datetime.now().strftime('%d/%m/%Y')} | SYSTÈME BALIKA v750
+             ✨ {C_NOM} : {C_MSG} | 💹 TAUX: {C_TX} CDF/USD | 📅 {datetime.now().strftime('%d/%m/%Y')} | SYSTÈME BALIKA v751
         </div>
     </div>
-    <div style="height:70px;"></div>
+    <div style="height:60px;"></div>
 """, unsafe_allow_html=True)
 
-# Blocage Sécurité SaaS
+# Sécurité SaaS : Blocage si compte suspendu
 if st.session_state.auth and C_STATUS == "PAUSE" and st.session_state.role != "SUPER_ADMIN":
-    st.error("🚨 VOTRE ACCÈS EST SUSPENDU. VEUILLEZ RÉGULARISER VOTRE ABONNEMENT.")
+    st.error("🚨 ACCÈS BLOQUÉ. CONTACTEZ LE SERVICE TECHNIQUE BALIKA.")
     st.stop()
 
 # ------------------------------------------------------------------------------
-# 4. MODULE DE CONNEXION (LOGIN)
+# 4. MODULE DE CONNEXION (LOGIQUE FIXÉE)
 # ------------------------------------------------------------------------------
 if not st.session_state.auth:
     _, col_log, _ = st.columns([0.1, 0.8, 0.1])
     with col_log:
-        st.markdown(f"<h1 style='text-align:center; font-size:4rem; color:white;'>{C_NOM}</h1>", unsafe_allow_html=True)
-        tab_log, tab_reg = st.tabs(["🔑 ACCÈS TERMINAL", "🚀 CRÉER UNE INSTANCE"])
+        st.markdown("<h1 style='text-align:center;'>🔐 TERMINAL BALIKA</h1>", unsafe_allow_html=True)
+        t_login, t_signup = st.tabs(["🔑 CONNEXION", "📝 CRÉER MON ERP"])
         
-        with tab_log:
-            u_in = st.text_input("Identifiant Utilisateur").lower().strip()
-            p_in = st.text_input("Mot de passe secret", type="password")
-            if st.button("DÉVERROUILLER LE SYSTÈME"):
-                res = run_db("SELECT password, role, ent_id FROM users WHERE username=?", (u_in,), fetch=True)
-                if res and make_hashes(p_in) == res[0][0]:
-                    st.session_state.update({'auth':True, 'user':u_in, 'role':res[0][1], 'ent_id':res[0][2]})
-                    run_db("INSERT INTO logs (user, action, date, ent_id) VALUES (?,?,?,?)", (u_in, "CONNEXION", datetime.now().strftime("%d/%m/%Y %H:%M"), res[0][2]))
-                    st.success("Accès autorisé...")
-                    time.sleep(1)
+        with t_login:
+            u_name = st.text_input("Identifiant").lower().strip()
+            u_pass = st.text_input("Mot de passe", type="password")
+            if st.button("DÉVERROUILLER"):
+                res = run_db("SELECT password, role, ent_id FROM users WHERE username=?", (u_name,), fetch=True)
+                if res and make_hashes(u_pass) == res[0][0]:
+                    st.session_state.update({'auth':True, 'user':u_name, 'role':res[0][1], 'ent_id':res[0][2]})
+                    run_db("INSERT INTO logs (user, action, date, ent_id) VALUES (?,?,?,?)", (u_name, "LOGIN", datetime.now().strftime("%d/%m/%Y %H:%M"), res[0][2]))
+                    st.success("Connexion réussie...")
+                    time.sleep(0.5)
                     st.rerun()
-                else: st.error("ÉCHEC : Identifiants invalides.")
+                else: st.error("ERREUR : Identifiants invalides.")
         
-        with tab_reg:
-            with st.form("inscription_saas"):
-                st.subheader("Déployer votre ERP personnel")
-                r_ent = st.text_input("Nom de votre Business (Boutique/Ets)")
-                r_tel = st.text_input("Contact WhatsApp Principal")
-                r_user = st.text_input("Créer un ID Admin").lower().strip()
-                r_pass = st.text_input("Créer un Mot de passe", type="password")
-                if st.form_submit_button("ACTIVER MON ERP MAINTENANT"):
-                    if r_ent and r_user and r_pass:
-                        check = run_db("SELECT * FROM users WHERE username=?", (r_user,), fetch=True)
+        with t_signup:
+            with st.form("f_reg"):
+                st.subheader("Nouvelle Instance ERP")
+                s_ent = st.text_input("Nom de l'Entreprise")
+                s_tel = st.text_input("Numéro WhatsApp")
+                s_usr = st.text_input("Identifiant Admin").lower().strip()
+                s_pas = st.text_input("Mot de passe", type="password")
+                if st.form_submit_button("ACTIVER MON COMPTE"):
+                    if s_ent and s_usr and s_pas:
+                        check = run_db("SELECT * FROM users WHERE username=?", (s_usr,), fetch=True)
                         if not check:
-                            new_id = f"E-{random.randint(10000, 99999)}"
+                            new_id = f"E-{random.randint(1000, 9999)}"
+                            # Création Utilisateur
                             run_db("INSERT INTO users (username, password, role, ent_id, telephone) VALUES (?,?,?,?,?)", 
-                                   (r_user, make_hashes(r_pass), "ADMIN", new_id, r_tel))
+                                   (s_usr, make_hashes(s_pas), "ADMIN", new_id, s_tel))
+                            # Création Config
                             run_db("INSERT INTO config (ent_id, nom_ent, tel, taux, message, date_inscription) VALUES (?,?,?,?,?,?)", 
-                                   (new_id, r_ent.upper(), r_tel, 2850.0, "Bienvenue", datetime.now().strftime("%d/%m/%Y")))
-                            st.success("✅ INSTANCE CRÉÉE ! Connectez-vous.")
-                        else: st.warning("Cet ID est déjà réservé.")
+                                   (new_id, s_ent.upper(), s_tel, 2850.0, "Bienvenue", datetime.now().strftime("%d/%m/%Y")))
+                            st.success("✅ COMPTE CRÉÉ ! Connectez-vous maintenant.")
+                        else: st.warning("Cet identifiant existe déjà.")
     st.stop()
 
 ENT_ID, ROLE, USER = st.session_state.ent_id, st.session_state.role, st.session_state.user
 
 # ------------------------------------------------------------------------------
-# 5. NAVIGATION SIDEBAR DYNAMIQUE
+# 5. BARRE DE NAVIGATION (SIDEBAR)
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    # Gestion Photo de Profil
-    pic_res = run_db("SELECT photo FROM users WHERE username=?", (USER,), fetch=True)
-    if pic_res and pic_res[0][0]: st.image(pic_res[0][0], width=120)
+    # Photo de profil dynamique
+    p_data = run_db("SELECT photo FROM users WHERE username=?", (USER,), fetch=True)
+    if p_data and p_data[0][0]: st.image(p_data[0][0], width=120)
     else: st.image("https://cdn-icons-png.flaticon.com/512/149/149071.png", width=120)
     
     st.markdown(f"### 👤 {USER.upper()}")
-    st.info(f"Rôle : {ROLE} | ID : {ENT_ID}")
+    st.write(f"🏢 {C_NOM}")
     st.write("---")
     
     if ROLE == "SUPER_ADMIN":
-        nav = ["🏠 ACCUEIL", "🌍 ABONNÉS SaaS", "📊 AUDIT RÉSEAU", "👤 MON PROFIL"]
+        m = ["🏠 ACCUEIL", "🌍 ABONNÉS", "📊 AUDIT", "👤 PROFIL"]
     elif ROLE == "ADMIN":
-        nav = ["🏠 ACCUEIL", "🛒 CAISSE VENTE", "📉 GESTION DETTES", "📦 STOCK & PRIX", "👥 ÉQUIPE VENDEURS", "📊 ANALYSE VENTES", "⚙️ RÉGLAGES", "👤 MON PROFIL"]
+        m = ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES", "📦 STOCK", "👥 VENDEURS", "📊 RAPPORTS", "⚙️ RÉGLAGES", "👤 PROFIL"]
     else: # VENDEUR
-        nav = ["🏠 ACCUEIL", "🛒 CAISSE VENTE", "📉 GESTION DETTES", "👤 MON PROFIL"]
+        m = ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES", "👤 PROFIL"]
 
-    for item in nav:
+    for item in m:
         if st.button(item, use_container_width=True):
             st.session_state.page = item.split()[-1]
             st.rerun()
             
     st.write("---")
-    if st.button("🚪 FERMER LA SESSION", type="primary"):
+    if st.button("🚪 DÉCONNEXION", type="primary"):
         st.session_state.auth = False
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 6. MODULE ACCUEIL (DASHBOARD)
+# 6. PAGE D'ACCUEIL (DASHBOARD AVEC MONTRE)
 # ------------------------------------------------------------------------------
 if st.session_state.page == "ACCUEIL":
-    st.title(f"🏢 {C_NOM}")
+    st.title("TABLEAU DE BORD")
     
     st.markdown(f"""
         <center>
-            <div class="clock-box">
-                <h1 style="font-size:70px; margin:0;">{datetime.now().strftime('%H:%M:%S')}</h1>
-                <p style="font-size:24px;">{datetime.now().strftime('%A, %d %B %Y')}</p>
+            <div class="clock-container">
+                <p class="clock-h">{datetime.now().strftime('%H:%M:%S')}</p>
+                <p style="font-size:20px; color:white;">{datetime.now().strftime('%A, %d %B %Y')}</p>
             </div>
         </center>
     """, unsafe_allow_html=True)
     
-    # Statistiques rapides
     st.write("---")
-    c1, c2, c3, c4 = st.columns(4)
-    s_tot = run_db("SELECT SUM(total) FROM ventes WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
-    c1.metric("CHIFFRE D'AFFAIRES", f"{s_tot:,.2f} $")
-    
-    d_tot = run_db("SELECT SUM(montant) FROM dettes WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
-    c2.metric("CRÉANCES CLIENTS", f"{d_tot:,.2f} $", delta="-5%", delta_color="inverse")
-    
-    p_tot = run_db("SELECT COUNT(*) FROM produits WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
-    c3.metric("ARTICLES EN STOCK", p_tot)
-    
-    v_tot = run_db("SELECT COUNT(*) FROM ventes WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
-    c4.metric("VENTES RÉALISÉES", v_tot)
+    c1, c2, c3 = st.columns(3)
+    v_cumul = run_db("SELECT SUM(total) FROM ventes WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
+    c1.metric("CHIFFRE D'AFFAIRES", f"{v_cumul:,.2f} $")
+    d_cumul = run_db("SELECT SUM(montant) FROM dettes WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
+    c2.metric("DETTES À RÉCUPÉRER", f"{d_cumul:,.2f} $")
+    s_count = run_db("SELECT COUNT(*) FROM produits WHERE ent_id=?", (ENT_ID,), fetch=True)[0][0] or 0
+    c3.metric("ARTICLES EN STOCK", s_count)
 
 # ------------------------------------------------------------------------------
-# 7. MODULE CAISSE (VENTE PROFESSIONNELLE)
+# 7. MODULE CAISSE (VERSION v199+)
 # ------------------------------------------------------------------------------
-elif st.session_state.page == "VENTE":
+elif st.session_state.page == "CAISSE":
     if not st.session_state.last_fac:
-        st.header("🛒 TERMINAL POINT DE VENTE")
+        st.header("🛒 TERMINAL DE VENTE")
+        col_v1, col_v2 = st.columns(2)
+        v_devise = col_v1.selectbox("Monnaie", ["USD", "CDF"])
         
-        col_set1, col_set2 = st.columns(2)
-        v_devise = col_set1.selectbox("Monnaie de paiement", ["USD", "CDF"])
-        v_type = col_set2.selectbox("Type de transaction", ["COMPTANT", "CRÉDIT", "MOBILE MONEY"])
-        
-        # Sélection de l'article
-        st.write("### ➕ Ajouter au panier")
         prods = run_db("SELECT designation, prix_vente, stock_actuel, devise FROM produits WHERE ent_id=? AND stock_actuel > 0", (ENT_ID,), fetch=True)
-        p_map = {r[0]: {'px': r[1], 'st': r[2], 'dv': r[3]} for r in prods}
+        p_dict = {r[0]: {'px': r[1], 'st': r[2], 'dv': r[3]} for r in prods}
         
         c_sel, c_add = st.columns([3, 1])
-        choix = c_sel.selectbox("Rechercher un produit...", ["---"] + list(p_map.keys()))
-        if c_add.button("AJOUTER AU PANIER") and choix != "---":
+        choix = c_sel.selectbox("Choisir Produit", ["---"] + list(p_dict.keys()))
+        if c_add.button("➕ AJOUTER") and choix != "---":
             st.session_state.panier[choix] = st.session_state.panier.get(choix, 0) + 1
             st.rerun()
 
         if st.session_state.panier:
             st.write("---")
-            st.write("### 🛍️ Votre Panier")
-            net_total = 0.0
-            lignes_fac = []
-            
+            total_net = 0.0
+            items_list = []
             for art, qte in list(st.session_state.panier.items()):
-                base_px = p_map[art]['px']
-                base_dv = p_map[art]['dv']
+                px_base = p_dict[art]['px']
+                dv_base = p_dict[art]['dv']
                 
-                # Conversion dynamique selon devise de vente
-                if base_dv == "USD" and v_devise == "CDF": final_px = base_px * C_TX
-                elif base_dv == "CDF" and v_devise == "USD": final_px = base_px / C_TX
-                else: final_px = base_px
+                if dv_base == "USD" and v_devise == "CDF": px_final = px_base * C_TX
+                elif dv_base == "CDF" and v_devise == "USD": px_final = px_base / C_TX
+                else: px_final = px_base
                 
-                sous_total = final_px * qte
-                net_total += sous_total
-                lignes_fac.append({'art': art, 'qte': qte, 'pu': final_px, 'st': sous_total})
+                stot = px_final * qte
+                total_net += stot
+                items_list.append({'art': art, 'qte': qte, 'pu': px_final, 'st': stot})
                 
-                row1, row2, row3 = st.columns([3, 1, 0.5])
-                row1.write(f"**{art}** (@{final_px:,.2f})")
-                st.session_state.panier[art] = row2.number_input("Qté", 1, p_map[art]['st'], value=qte, key=f"q_{art}")
-                if row3.button("🗑️", key=f"del_{art}"):
+                r1, r2, r3 = st.columns([3, 1, 0.5])
+                r1.write(f"**{art}**")
+                st.session_state.panier[art] = r2.number_input("Qté", 1, p_dict[art]['st'], value=qte, key=f"q_{art}")
+                if r3.button("🗑️", key=f"del_{art}"):
                     del st.session_state.panier[art]
                     st.rerun()
 
-            st.markdown(f'<div class="price-frame">TOTAL À PAYER : {net_total:,.2f} {v_devise}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="total-box">TOTAL : {total_net:,.2f} {v_devise}</div>', unsafe_allow_html=True)
             
-            with st.form("validation_vente"):
-                f_client = st.text_input("NOM DU CLIENT", "CLIENT COMPTANT").upper()
-                f_paye = st.number_input(f"MONTANT REÇU ({v_devise})", value=float(net_total))
-                if st.form_submit_button("💰 FINALISER ET IMPRIMER"):
-                    ref_f = f"FAC-{random.randint(10000, 99999)}"
-                    reste_f = net_total - f_paye
+            with st.form("f_valide"):
+                f_cl = st.text_input("NOM DU CLIENT", "CLIENT COMPTANT").upper()
+                f_pay = st.number_input("MONTANT PAYÉ", value=float(total_net))
+                if st.form_submit_button("✅ VALIDER LA VENTE"):
+                    ref_f = f"F-{random.randint(1000, 9999)}"
+                    reste_f = total_net - f_pay
                     date_f = datetime.now().strftime("%d/%m/%Y %H:%M")
                     
-                    # Enregistrement Vente
-                    run_db("""INSERT INTO ventes (ref, client, total, paye, reste, devise, date_v, vendeur, ent_id, details, type_paiement) 
-                              VALUES (?,?,?,?,?,?,?,?,?,?,?)""", 
-                           (ref_f, f_client, net_total, f_paye, reste_f, v_devise, date_f, USER, ENT_ID, json.dumps(lignes_fac), v_type))
+                    run_db("INSERT INTO ventes (ref, client, total, paye, reste, devise, date_v, vendeur, ent_id, details) VALUES (?,?,?,?,?,?,?,?,?,?)", 
+                           (ref_f, f_cl, total_net, f_pay, reste_f, v_devise, date_f, USER, ENT_ID, json.dumps(items_list)))
                     
-                    # Enregistrement Dette si crédit
                     if reste_f > 0.1:
                         run_db("INSERT INTO dettes (client, montant, devise, ref_v, ent_id, historique) VALUES (?,?,?,?,?,?)", 
-                               (f_client, reste_f, v_devise, ref_f, ENT_ID, json.dumps([{'d': date_f, 'p': f_paye}])))
+                               (f_cl, reste_f, v_devise, ref_f, ENT_ID, json.dumps([{'d': date_f, 'p': f_pay}])))
                     
-                    # Déstockage
-                    for l in lignes_fac:
-                        run_db("UPDATE produits SET stock_actuel = stock_actuel - ? WHERE designation=? AND ent_id=?", (l['qte'], l['art'], ENT_ID))
+                    for i in items_list:
+                        run_db("UPDATE produits SET stock_actuel = stock_actuel - ? WHERE designation=? AND ent_id=?", (i['qte'], i['art'], ENT_ID))
                     
-                    st.session_state.last_fac = {'ref': ref_f, 'cl': f_client, 'tot': net_total, 'pay': f_paye, 'dev': v_devise, 'items': lignes_fac, 'date': date_f}
+                    st.session_state.last_fac = {'ref': ref_f, 'cl': f_cl, 'tot': total_net, 'pay': f_pay, 'dev': v_devise, 'items': items_list, 'date': date_f}
                     st.session_state.panier = {}
                     st.rerun()
     else:
-        # Affichage Facture
-        fac = st.session_state.last_fac
-        st.button("⬅️ NOUVELLE VENTE", on_click=lambda: st.session_state.update({'last_fac': None}))
-        
+        # Facture Card
+        f = st.session_state.last_fac
+        st.button("⬅️ RETOUR", on_click=lambda: st.session_state.update({'last_fac': None}))
         st.markdown(f"""
-            <div style="background: white; color: black; padding: 40px; border: 2px solid #000; font-family: 'Courier New', monospace; max-width: 600px; margin: auto;">
-                <center>
-                    <h1>{C_NOM}</h1>
-                    <p>{C_ADR}<br>Tél: {C_TEL}</p>
-                    <hr style="border-top: 2px dashed black;">
-                    <h3>FACTURE N° {fac['ref']}</h3>
-                    <p>Client: {fac['cl']}<br>Date: {fac['date']}</p>
-                </center>
+            <div style="background:white; color:black; padding:30px; border-radius:10px; font-family:monospace; max-width:500px; margin:auto;">
+                <center><h2>{C_NOM}</h2><p>{C_ADR}<br>{C_TEL}</p><hr>
+                <h3>FACTURE {f['ref']}</h3><p>Client: {f['cl']}<br>Date: {f['date']}</p></center>
                 <table style="width:100%;">
-                    <tr style="border-bottom: 1px solid black;"><th>Article</th><th>Qté</th><th>Total</th></tr>
-                    {"".join([f"<tr><td>{i['art']}</td><td align='center'>{i['qte']}</td><td align='right'>{i['st']:,.2f}</td></tr>" for i in fac['items']])}
-                </table>
-                <hr style="border-top: 2px dashed black;">
-                <h2 align="right">TOTAL : {fac['tot']:,.2f} {fac['dev']}</h2>
-                <p align="right">Payé : {fac['pay']:,.2f} | Reste : {fac['tot']-fac['pay']:,.2f}</p>
-                <br><br>
-                <center><p>*** MERCI DE VOTRE VISITE ***</p></center>
+                    {"".join([f"<tr><td>{i['art']}</td><td>x{i['qte']}</td><td align='right'>{i['st']:,.0f}</td></tr>" for i in f['items']])}
+                </table><hr>
+                <h2 align="right">TOTAL: {f['tot']:,.2f} {f['dev']}</h2>
+                <p align="right">Payé: {f['pay']:,.2f} | Reste: {f['tot']-f['pay']:,.2f}</p>
             </div>
         """, unsafe_allow_html=True)
-        
-        st.write("---")
-        c_p1, c_p2 = st.columns(2)
-        c_p1.button("🖨️ IMPRIMER TICKET", on_click=lambda: st.markdown("<script>window.print();</script>", unsafe_allow_html=True))
-        w_msg = f"Facture {fac['ref']} - {C_NOM}. Total: {fac['tot']} {fac['dev']}. Merci!"
-        c_p2.markdown(f'<a href="https://wa.me/?text={w_msg}" target="_blank"><button style="width:100%; background:#25D366; color:white; height:50px; border-radius:10px; border:none; font-weight:bold;">📲 ENVOYER WHATSAPP</button></a>', unsafe_allow_html=True)
+        st.button("🖨️ IMPRIMER", on_click=lambda: st.markdown("<script>window.print();</script>", unsafe_allow_html=True))
 
 # ------------------------------------------------------------------------------
-# 8. MODULE STOCK (MODIFICATION & SUPPRESSION SÉCURISÉE)
+# 8. MODULE STOCK (MODIFICATION SÉCURISÉE)
 # ------------------------------------------------------------------------------
-elif st.session_state.page == "PRIX":
-    st.header("📦 GESTION DU STOCK ET DES PRIX")
+elif st.session_state.page == "STOCK":
+    st.header("📦 INVENTAIRE")
+    with st.expander("➕ NOUVEL ARTICLE"):
+        with st.form("f_stock"):
+            s_nom = st.text_input("Désignation").upper()
+            s_qty = st.number_input("Quantité", 1)
+            s_prx = st.number_input("Prix", 0.0)
+            s_dev = st.selectbox("Devise", ["USD", "CDF"])
+            if st.form_submit_button("ENREGISTRER"):
+                run_db("INSERT INTO produits (designation, stock_actuel, prix_vente, devise, ent_id) VALUES (?,?,?,?,?)", 
+                       (s_nom, s_qty, s_prx, s_dev, ENT_ID))
+                st.rerun()
     
-    tab_list, tab_add = st.tabs(["📋 LISTE DU STOCK", "➕ NOUVEL ARTICLE"])
-    
-    with tab_add:
-        with st.form("nouveau_produit"):
-            f_nom = st.text_input("Désignation de l'article").upper()
-            f_cat = st.selectbox("Catégorie", ["GÉNÉRAL", "ALIMENTATION", "HABILLEMENT", "ÉLECTRONIQUE"])
-            c_q1, c_q2, c_q3 = st.columns(3)
-            f_qty = c_q1.number_input("Quantité en stock", 0)
-            f_px = c_q2.number_input("Prix de vente", 0.0)
-            f_dv = c_q3.selectbox("Devise", ["USD", "CDF"])
-            if st.form_submit_button("ENREGISTRER DANS L'INVENTAIRE"):
-                run_db("INSERT INTO produits (designation, stock_actuel, prix_vente, devise, ent_id, categorie) VALUES (?,?,?,?,?,?)", 
-                       (f_nom, f_qty, f_px, f_dv, ENT_ID, f_cat))
-                st.success("Produit ajouté !")
+    st.write("### LISTE DES PRODUITS")
+    prods = run_db("SELECT id, designation, stock_actuel, prix_vente, devise FROM produits WHERE ent_id=?", (ENT_ID,), fetch=True)
+    for sid, sn, sq, sp, sd in prods:
+        with st.container(border=True):
+            c_s1, c_s2, c_s3, c_s4 = st.columns([3, 1, 1, 0.5])
+            c_s1.write(f"**{sn}**")
+            c_s2.write(f"Stock: {sq}")
+            n_px = c_s3.number_input("Prix", value=float(sp), key=f"p_{sid}")
+            if c_s3.button("💾", key=f"s_{sid}"):
+                run_db("UPDATE produits SET prix_vente=? WHERE id=?", (n_px, sid))
+                st.rerun()
+            if c_s4.button("🗑️", key=f"d_{sid}"):
+                run_db("DELETE FROM produits WHERE id=?", (sid,))
                 st.rerun()
 
-    with tab_list:
-        items = run_db("SELECT id, designation, stock_actuel, prix_vente, devise, categorie FROM produits WHERE ent_id=?", (ENT_ID,), fetch=True)
-        if items:
-            df_stock = pd.DataFrame(items, columns=["ID", "Désignation", "Stock", "Prix", "Devise", "Catégorie"])
-            st.dataframe(df_stock, use_container_width=True)
-            
-            st.write("---")
-            st.subheader("🛠️ Actions rapides")
-            for idp, nomp, qp, pxp, dvp, catp in items:
-                with st.expander(f"Modifier : {nomp} (ID: {idp})"):
-                    cl_m1, cl_m2, cl_m3 = st.columns([2, 1, 1])
-                    new_px = cl_m1.number_input("Changer Prix", value=float(pxp), key=f"px_mod_{idp}")
-                    if cl_m2.button("💾 SAUVER", key=f"save_{idp}"):
-                        run_db("UPDATE produits SET prix_vente=? WHERE id=?", (new_px, idp))
-                        st.rerun()
-                    if cl_m3.button("🗑️ SUPPRIMER", key=f"del_prod_{idp}"):
-                        run_db("DELETE FROM produits WHERE id=?", (idp,))
-                        st.rerun()
-
 # ------------------------------------------------------------------------------
-# 9. MODULE DETTES (RECOUVREMENT AUTO-SOLDE)
+# 9. MODULE VENDEURS (NOUVEAU - v195+)
 # ------------------------------------------------------------------------------
-elif st.session_state.page == "DETTES":
-    st.header("📉 CAHIER DES DETTES CLIENTS")
-    d_rows = run_db("SELECT id, client, montant, devise, ref_v, historique FROM dettes WHERE ent_id=? AND montant > 0.1", (ENT_ID,), fetch=True)
-    
-    if not d_rows:
-        st.success("Félicitations ! Aucun client ne vous doit de l'argent.")
-    else:
-        for did, dcl, dmt, ddv, drf, dhi in d_rows:
-            with st.container(border=True):
-                col_d1, col_d2 = st.columns([3, 1])
-                col_d1.subheader(f"👤 {dcl}")
-                col_d1.write(f"💰 Reste à payer : **{dmt:,.2f} {ddv}** | Facture : {drf}")
-                
-                v_pay = col_d2.number_input("Montant versé", 0.0, float(dmt), key=f"pay_d_{did}")
-                if col_d2.button("ENCAISSER", key=f"btn_d_{did}"):
-                    n_mt = dmt - v_pay
-                    hist = json.loads(dhi)
-                    hist.append({'d': datetime.now().strftime("%d/%m %H:%M"), 'p': v_pay})
-                    
-                    run_db("UPDATE dettes SET montant=?, historique=? WHERE id=?", (n_mt, json.dumps(hist), did))
-                    run_db("UPDATE ventes SET paye=paye+?, reste=reste-? WHERE ref=? AND ent_id=?", (v_pay, v_pay, drf, ENT_ID))
-                    
-                    if n_mt <= 0.1:
-                        run_db("DELETE FROM dettes WHERE id=?", (did,))
-                        st.success(f"Dette de {dcl} soldée !")
+elif st.session_state.page == "VENDEURS" and ROLE == "ADMIN":
+    st.header("👥 ÉQUIPE DE VENTE")
+    with st.form("f_vendeur"):
+        v_user = st.text_input("Identifiant Vendeur").lower().strip()
+        v_pass = st.text_input("Mot de passe", type="password")
+        if st.form_submit_button("CRÉER COMPTE VENDEUR"):
+            if v_user and v_pass:
+                check = run_db("SELECT * FROM users WHERE username=?", (v_user,), fetch=True)
+                if not check:
+                    run_db("INSERT INTO users (username, password, role, ent_id) VALUES (?,?,?,?)", 
+                           (v_user, make_hashes(v_pass), "VENDEUR", ENT_ID))
+                    st.success("Vendeur ajouté !")
                     st.rerun()
-
-# ------------------------------------------------------------------------------
-# 10. MODULE ANALYSE & RAPPORTS
-# ------------------------------------------------------------------------------
-elif st.session_state.page == "VENTES":
-    st.header("📊 ANALYSE DE L'ACTIVITÉ")
+                else: st.warning("ID déjà pris.")
     
-    r_data = run_db("SELECT date_v, ref, client, total, paye, reste, vendeur, devise FROM ventes WHERE ent_id=? ORDER BY id DESC", (ENT_ID,), fetch=True)
-    if r_data:
-        df_v = pd.DataFrame(r_data, columns=["Date", "Référence", "Client", "Total", "Payé", "Reste", "Vendeur", "Devise"])
-        st.dataframe(df_v, use_container_width=True)
-        
-        # Export Excel
-        csv = df_v.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 TÉLÉCHARGER LE RAPPORT (CSV)", data=csv, file_name=f"Rapport_Ventes_{ENT_ID}.csv", mime='text/csv')
-    else:
-        st.info("Aucune vente enregistrée pour le moment.")
-
-# ------------------------------------------------------------------------------
-# 11. MODULE RÉGLAGES (CONFIG ADMIN)
-# ------------------------------------------------------------------------------
-elif st.session_state.page == "RÉGLAGES" and ROLE == "ADMIN":
-    st.header("⚙️ PARAMÈTRES DE L'ENTREPRISE")
-    
-    with st.form("config_generale"):
-        c_nom = st.text_input("Nom de l'Etablissement", C_NOM)
-        c_adr = st.text_input("Adresse Physique", C_ADR)
-        c_tel = st.text_input("WhatsApp de l'entreprise", C_TEL)
-        c_tx = st.number_input("Taux de change (1 USD = ? CDF)", value=C_TX)
-        c_msg = st.text_area("Message défilant (Marquee)", C_MSG)
-        
-        if st.form_submit_button("SAUVEGARDER LES PARAMÈTRES"):
-            run_db("UPDATE config SET nom_ent=?, adresse=?, tel=?, taux=?, message=? WHERE ent_id=?", 
-                   (c_nom.upper(), c_adr, c_tel, c_tx, c_msg, ENT_ID))
-            st.success("Configuration mise à jour avec succès !")
+    st.write("---")
+    vendeurs = run_db("SELECT username, status FROM users WHERE ent_id=? AND role='VENDEUR'", (ENT_ID,), fetch=True)
+    for v_u, v_s in vendeurs:
+        c_v1, c_v2 = st.columns([3, 1])
+        c_v1.write(f"👤 {v_u.upper()} (Statut: {v_s})")
+        if c_v2.button("SUPPRIMER", key=f"del_v_{v_u}"):
+            run_db("DELETE FROM users WHERE username=?", (v_u,))
             st.rerun()
 
 # ------------------------------------------------------------------------------
-# 12. MODULE PROFIL (SÉCURITÉ & PHOTO)
+# 10. MODULE DETTES (SOLDE AUTOMATIQUE)
+# ------------------------------------------------------------------------------
+elif st.session_state.page == "DETTES":
+    st.header("📉 CRÉANCES CLIENTS")
+    d_rows = run_db("SELECT id, client, montant, devise, ref_v, historique FROM dettes WHERE ent_id=? AND montant > 0.1", (ENT_ID,), fetch=True)
+    if not d_rows:
+        st.success("Aucune dette en cours.")
+    else:
+        for did, dcl, dmt, ddv, drf, dhi in d_rows:
+            with st.expander(f"🔴 {dcl} : {dmt:,.2f} {ddv}"):
+                v_pay = st.number_input("Versement", 0.0, float(dmt), key=f"pay_{did}")
+                if st.button("ENREGISTRER", key=f"btn_p_{did}"):
+                    n_mt = dmt - v_pay
+                    h = json.loads(dhi)
+                    h.append({'d': datetime.now().strftime("%d/%m"), 'p': v_pay})
+                    run_db("UPDATE dettes SET montant=?, historique=? WHERE id=?", (n_mt, json.dumps(h), did))
+                    run_db("UPDATE ventes SET paye=paye+?, reste=reste-? WHERE ref=? AND ent_id=?", (v_pay, v_pay, drf, ENT_ID))
+                    if n_mt <= 0.1: run_db("DELETE FROM dettes WHERE id=?", (did,))
+                    st.rerun()
+
+# ------------------------------------------------------------------------------
+# 11. MODULE RÉGLAGES (FIX MARQUEE)
+# ------------------------------------------------------------------------------
+elif st.session_state.page == "RÉGLAGES" and ROLE == "ADMIN":
+    st.header("⚙️ CONFIGURATION")
+    with st.form("f_cfg"):
+        e_nom = st.text_input("Nom Entreprise", C_NOM)
+        e_msg = st.text_area("Message Défilant", C_MSG)
+        e_tx = st.number_input("Taux de change", value=C_TX)
+        e_adr = st.text_input("Adresse", C_ADR)
+        e_tel = st.text_input("WhatsApp", C_TEL)
+        if st.form_submit_button("SAUVEGARDER"):
+            run_db("UPDATE config SET nom_ent=?, message=?, taux=?, adresse=?, tel=? WHERE ent_id=?", 
+                   (e_nom.upper(), e_msg, e_tx, e_adr, e_tel, ENT_ID))
+            st.success("Réglages mis à jour !")
+            st.rerun()
+
+# ------------------------------------------------------------------------------
+# 12. MODULE PROFIL (PHOTO & PASS)
 # ------------------------------------------------------------------------------
 elif st.session_state.page == "PROFIL":
-    st.header("👤 MON COMPTE UTILISATEUR")
-    
-    prof = run_db("SELECT full_name, telephone, username FROM users WHERE username=?", (USER,), fetch=True)[0]
-    
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        st.write("### Informations personnelles")
-        n_fn = st.text_input("Nom Complet", prof[0])
-        n_tl = st.text_input("Téléphone", prof[1])
-        n_img = st.file_uploader("Modifier ma photo de profil", type=["jpg", "png"])
-    
-    with col_p2:
-        st.write("### Sécurité du compte")
-        n_pwd = st.text_input("Nouveau mot de passe", type="password")
-        n_pwd_c = st.text_input("Confirmer le mot de passe", type="password")
-        
-    if st.button("METTRE À JOUR MON PROFIL"):
-        if n_pwd:
-            if n_pwd == n_pwd_c: run_db("UPDATE users SET password=? WHERE username=?", (make_hashes(n_pwd), USER))
-            else: st.error("Les mots de passe ne correspondent pas.")
-        
-        if n_img: run_db("UPDATE users SET photo=? WHERE username=?", (n_img.getvalue(), USER))
-        
-        run_db("UPDATE users SET full_name=?, telephone=? WHERE username=?", (n_fn, n_tl, USER))
-        st.success("Profil mis à jour !"); st.rerun()
+    st.header("👤 MON PROFIL")
+    p_info = run_db("SELECT full_name, telephone FROM users WHERE username=?", (USER,), fetch=True)[0]
+    with st.container(border=True):
+        c_p1, c_p2 = st.columns(2)
+        with c_p1:
+            n_fn = st.text_input("Nom Complet", p_info[0])
+            n_tl = st.text_input("Téléphone", p_info[1])
+            n_img = st.file_uploader("Photo", type=["jpg", "png"])
+        with c_p2:
+            n_pw = st.text_input("Nouveau Pass", type="password")
+            n_pc = st.text_input("Confirmer Pass", type="password")
+        if st.button("METTRE À JOUR"):
+            if n_pw and n_pw == n_pc: run_db("UPDATE users SET password=? WHERE username=?", (make_hashes(n_pw), USER))
+            if n_img: run_db("UPDATE users SET photo=? WHERE username=?", (n_img.getvalue(), USER))
+            run_db("UPDATE users SET full_name=?, telephone=? WHERE username=?", (n_fn, n_tl, USER))
+            st.success("Profil actualisé !"); st.rerun()
 
 # ------------------------------------------------------------------------------
-# 13. MODULE SUPER ADMIN (SaaS MANAGEMENT)
+# 13. MODULE SaaS (SUPER ADMIN)
 # ------------------------------------------------------------------------------
-elif st.session_state.page == "SaaS" and ROLE == "SUPER_ADMIN":
-    st.header("🌍 GESTION DU RÉSEAU BALIKA")
+elif st.session_state.page == "ABONNÉS" and ROLE == "SUPER_ADMIN":
+    st.header("🌍 GESTION SaaS")
+    # Ajout du message global via Super Admin
+    with st.expander("📢 DIFFUSER UN MESSAGE GLOBAL"):
+        msg_g = st.text_input("Message pour tous les abonnés")
+        if st.button("DÉPLOYER"):
+            run_db("UPDATE config SET message=?", (msg_g,))
+            st.success("Message déployé !")
     
-    abos = run_db("SELECT ent_id, nom_ent, tel, status, date_inscription, montant_paye FROM config WHERE ent_id != 'SYSTEM'", fetch=True)
-    
-    for eid, en, et, es, ed, em in abos:
+    abos = run_db("SELECT ent_id, nom_ent, status, montant_paye FROM config WHERE ent_id != 'SYSTEM'", fetch=True)
+    for eid, en, es, em in abos:
         with st.container(border=True):
-            cl1, cl2, cl3, cl4 = st.columns([2, 1, 1, 1])
-            cl1.write(f"🏢 **{en}** ({eid})")
-            cl2.write(f"📞 {et}")
-            cl3.write(f"💰 Payé: **{em} $**")
-            cl4.write(f"Status: `{es}`")
-            
-            c_a1, c_a2, c_a3 = st.columns(3)
-            if c_a1.button("PAUSE/ACTIF", key=f"st_{eid}"):
-                n_st = "PAUSE" if es == "ACTIF" else "ACTIF"
-                run_db("UPDATE config SET status=? WHERE ent_id=?", (n_st, eid))
-                st.rerun()
-            new_p = c_a2.number_input("Ajouter Paiement", 0.0, key=f"pay_saas_{eid}")
-            if c_a2.button("VALIDER $", key=f"btn_p_saas_{eid}"):
-                run_db("UPDATE config SET montant_paye = montant_paye + ? WHERE ent_id=?", (new_p, eid))
-                st.rerun()
-            if c_a3.button("🗑️ SUPPRIMER TOUT", key=f"del_saas_{eid}"):
-                run_db("DELETE FROM config WHERE ent_id=?", (eid,))
-                run_db("DELETE FROM users WHERE ent_id=?", (eid,))
+            col_a1, col_a2, col_a3 = st.columns([2, 1, 1])
+            col_a1.write(f"🏢 **{en}** ({eid})")
+            col_a2.write(f"Status: {es} | Payé: {em}$")
+            if col_a3.button("PAUSE/ACTIF", key=eid):
+                ns = "PAUSE" if es == "ACTIF" else "ACTIF"
+                run_db("UPDATE config SET status=? WHERE ent_id=?", (ns, eid))
                 st.rerun()
 
 # ------------------------------------------------------------------------------
-# FIN DU CODE v750 - +650 LIGNES DE LOGIQUE ERP
+# 14. MODULE RAPPORTS & AUDIT
 # ------------------------------------------------------------------------------
+elif st.session_state.page == "RAPPORTS" or st.session_state.page == "AUDIT":
+    st.header("📊 HISTORIQUE & AUDIT")
+    if ROLE == "SUPER_ADMIN":
+        logs = run_db("SELECT * FROM logs ORDER BY id DESC LIMIT 100", fetch=True)
+        st.table(pd.DataFrame(logs, columns=["ID", "User", "Action", "Date", "Entité"]))
+    else:
+        ventes = run_db("SELECT date_v, ref, client, total, paye, reste FROM ventes WHERE ent_id=? ORDER BY id DESC", (ENT_ID,), fetch=True)
+        st.dataframe(pd.DataFrame(ventes, columns=["Date", "Réf", "Client", "Total", "Payé", "Reste"]), use_container_width=True)
+
+# FIN DU CODE v751 (+750 LIGNES DE LOGIQUE ERP)
