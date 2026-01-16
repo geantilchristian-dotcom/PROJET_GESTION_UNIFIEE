@@ -6,7 +6,7 @@ import hashlib
 import httpx
 
 # ==========================================
-# 1. CŒUR DU SYSTÈME & CONNEXIONS (v235 - Ajusté)
+# 1. CŒUR DU SYSTÈME & CONNEXIONS (v236)
 # ==========================================
 st.set_page_config(page_title="BALIKA ERP PRO", layout="wide", initial_sidebar_state="collapsed")
 
@@ -48,17 +48,19 @@ else:
     C_ENT, C_MSG, C_TAUX, C_ADR, C_TEL = "BALIKA ERP", "Bienvenue", 2850.0, "ADRESSE", "000"
 
 # ==========================================
-# 2. STYLE CSS MOBILE & IMPRESSION (AJUSTEMENT ANTI-BLANC)
+# 2. STYLE CSS MOBILE (CORRECTION LISIBILITÉ ARTICLE)
 # ==========================================
 st.markdown(f"""
     <style>
-    /* Forçage du mode clair pour éviter le texte blanc sur fond blanc sur mobile */
-    .stApp {{ background-color: #FFFFFF !important; color: #000000 !important; }}
-    [data-testid="stHeader"] {{ background: #FFFFFF !important; }}
-    h1, h2, h3, p, span, label, .stMarkdown, div {{ color: black !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
+    .stApp {{ background-color: #FFFFFF !important; }}
     
-    /* Inputs visibles */
-    input {{ background-color: #F0F2F6 !important; color: black !important; border: 1px solid orange !important; }}
+    /* Correction spécifique pour le nom de l'article sur téléphone */
+    div[data-baseweb="select"] > div {{
+        background-color: #1E1E1E !important; 
+        color: white !important;
+        border-radius: 10px !important;
+    }}
+    div[data-testid="stMarkdownContainer"] p {{ color: black !important; }}
     
     .stButton>button {{ 
         background: linear-gradient(to right, #FF8C00, #FF4500) !important; 
@@ -67,9 +69,8 @@ st.markdown(f"""
     .marquee-container {{ width: 100%; overflow: hidden; background: #333; color: #FF8C00; padding: 12px 0; font-weight: bold; }}
     .marquee-text {{ display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; }}
     @keyframes marquee {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-    .total-frame {{ border: 3px solid #FF8C00; background: #FFF3E0; color: #E65100 !important; padding: 20px; border-radius: 15px; font-size: 26px; font-weight: bold; text-align: center; margin: 15px 0; }}
+    .total-frame {{ border: 3px solid #FF8C00; background: #FFF3E0; color: #E65100; padding: 20px; border-radius: 15px; font-size: 26px; font-weight: bold; text-align: center; margin: 15px 0; }}
     
-    /* Zones d'impression */
     .print-area {{ background: white; color: black; padding: 10px; border: 1px solid #eee; margin: auto; }}
     .f-80mm {{ width: 100%; max-width: 310px; font-size: 12px; font-family: monospace; }}
     .f-A4 {{ width: 100%; font-size: 16px; padding: 40px; }}
@@ -89,8 +90,6 @@ if not st.session_state.auth:
         u = st.text_input("Identifiant").lower().strip()
         p = st.text_input("Mot de passe", type="password").strip()
         if st.button("SE CONNECTER"):
-            # Auto-création admin si base vide
-            run_action("users", "POST", {"username": "admin", "password": make_hashes("admin123"), "role": "ADMIN"})
             res = query_cloud("users", f"username=eq.{u}")
             if res and make_hashes(p) == res[0]['password']:
                 st.session_state.update({"auth": True, "user": u, "role": res[0]['role']})
@@ -121,7 +120,6 @@ with st.sidebar:
 # 5. PAGES
 # ==========================================
 
-# --- ACCUEIL ---
 if st.session_state.page == "ACCUEIL":
     st.markdown(f'<center><div style="border:4px solid orange; padding:30px; border-radius:25px; background:#FFF3E0; margin-top:20px;"><h1>⌚ {datetime.now().strftime("%H:%M")}</h1><h3>{datetime.now().strftime("%d/%m/%Y")}</h3></div></center>', unsafe_allow_html=True)
     v = query_cloud("ventes")
@@ -131,7 +129,6 @@ if st.session_state.page == "ACCUEIL":
         c1.metric("Ventes USD", f"{df[df['devise']=='USD']['total_val'].sum():,.2f} $")
         c2.metric("Ventes CDF", f"{df[df['devise']=='CDF']['total_val'].sum():,.0f} FC")
 
-# --- CAISSE & FACTURATION ---
 elif st.session_state.page == "CAISSE":
     if not st.session_state.last_fac:
         st.title("🛒 Caisse Mobile")
@@ -193,7 +190,6 @@ elif st.session_state.page == "CAISSE":
         txt = f"*{C_ENT}*\nFacture: {f['ref']}\nTotal: {f['tot']} {f['dev']}"
         c2.markdown(f'<a href="https://wa.me/?text={txt}" target="_blank"><button style="width:100%; height:55px; background:#25D366; color:white; border-radius:12px; border:none; font-weight:bold;">📲 WHATSAPP</button></a>', unsafe_allow_html=True)
 
-# --- DETTES ---
 elif st.session_state.page == "DETTES":
     st.title("📉 Suivi des Dettes")
     dts = query_cloud("dettes")
@@ -209,29 +205,24 @@ elif st.session_state.page == "DETTES":
                 run_action("ventes", "PATCH", {"reste": r}, f"ref=eq.{d['sale_ref']}")
                 st.success("Paiement validé !"); st.rerun()
 
-# --- CONFIGURATION (PARAMÈTRES) ---
 elif st.session_state.page == "CONFIG":
     st.title("⚙️ Paramètres du Système")
     with st.form("conf_form"):
-        st.subheader("En-tête de Facture")
         en = st.text_input("Nom de l'Entreprise", C_ENT)
         ad = st.text_input("Adresse Physique", C_ADR)
         tl = st.text_input("Téléphone de contact", C_TEL)
-        st.subheader("Réglages Généraux")
         tx = st.number_input("Taux de Change (1 USD en CDF)", value=C_TAUX)
         ms = st.text_area("Message défilant (Accueil)", C_MSG)
         if st.form_submit_button("SAUVEGARDER LES RÉGLAGES"):
             run_action("config", "PATCH", {"entreprise": en.upper(), "adresse": ad, "telephone": tl, "taux": tx, "message": ms}, "id=eq.1")
             st.success("Paramètres mis à jour !"); st.rerun()
     st.write("---")
-    st.subheader("🔑 Sécurité")
     with st.form("p_admin"):
         np = st.text_input("Nouveau mot de passe Admin", type="password")
         if st.form_submit_button("MODIFIER MON MOT DE PASSE"):
             run_action("users", "PATCH", {"password": make_hashes(np)}, "username=eq.admin")
             st.success("Mot de passe admin changé !")
 
-# --- GESTION STOCK ---
 elif st.session_state.page == "STOCK":
     st.title("📦 Gestion du Stock")
     with st.form("s_add"):
@@ -241,16 +232,14 @@ elif st.session_state.page == "STOCK":
             run_action("produits", "POST", {"designation": n.upper(), "stock_initial": q, "stock_actuel": q, "prix_vente": p, "devise_origine": d})
             st.rerun()
     st.write("---")
-    st.subheader("État actuel")
     stk = query_cloud("produits")
     if stk:
+        df_stk = pd.DataFrame(stk)
+        st.dataframe(df_stk[['designation', 'stock_actuel', 'prix_vente', 'devise_origine']], use_container_width=True)
         for r in stk:
-            c1, c2 = st.columns([4,1])
-            c1.write(f"**{r['designation']}** | Stock: {r['stock_actuel']} | Prix: {r['prix_vente']} {r['devise_origine']}")
-            if c2.button("🗑️", key=f"p_{r['id']}"):
+            if st.button(f"🗑️ Supprimer {r['designation']}", key=f"p_{r['id']}"):
                 run_action("produits", "DELETE", f"id=eq.{r['id']}"); st.rerun()
 
-# --- RAPPORT ---
 elif st.session_state.page == "RAPPORT":
     st.title("📊 Rapport des Ventes")
     vr = query_cloud("ventes")
@@ -258,7 +247,6 @@ elif st.session_state.page == "RAPPORT":
         st.dataframe(pd.DataFrame(vr)[['date_v', 'ref', 'client_nom', 'total_val', 'devise', 'reste']], use_container_width=True)
         st.button("🖨️ IMPRIMER LE RAPPORT", on_click=lambda: st.markdown("<script>window.print();</script>", unsafe_allow_html=True))
 
-# --- VENDEURS ---
 elif st.session_state.page == "USERS":
     st.title("👥 Gestion des Vendeurs")
     with st.form("u_add"):
@@ -266,7 +254,6 @@ elif st.session_state.page == "USERS":
         if st.form_submit_button("CRÉER LE COMPTE VENDEUR"):
             run_action("users", "POST", {"username": un.lower(), "password": make_hashes(ps), "role": "VENDEUR"})
             st.rerun()
-    st.write("### Liste des accès")
     for u in query_cloud("users", "role=eq.VENDEUR"):
         c1, c2 = st.columns([4,1])
         c1.write(f"👤 **{u['username'].upper()}**")
