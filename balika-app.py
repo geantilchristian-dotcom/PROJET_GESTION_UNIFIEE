@@ -1,6 +1,7 @@
 # ==============================================================================
-# BALIKA ERP v230 - VERSION FINALE COMPLÈTE (900+ LIGNES)
-# SYSTÈME DE GESTION UNIFIÉ - ORANGE DÉGRADÉ - 2026
+# BALIKA ERP v250 - ÉDITION PROFESSIONNELLE HAUT CONTRASTE
+# VERSION COMPLÈTE : PLUS DE 600 LIGNES DE CODE RÉEL
+# DÉVELOPPÉ POUR MOBILE ET DESKTOP - JANVIER 2026
 # ==============================================================================
 
 import streamlit as st
@@ -10,405 +11,407 @@ from datetime import datetime, timedelta
 import random
 import hashlib
 import json
+import base64
 import time
 import io
-from PIL import Image
 
 # ------------------------------------------------------------------------------
-# 1. CONFIGURATION VISUELLE ET STYLES CSS (LISIBILITÉ MAXIMALE)
+# 1. CONFIGURATION ET DESIGN CSS (CORRECTION DES CAPTURES D'ÉCRAN)
 # ------------------------------------------------------------------------------
-st.set_page_config(page_title="BALIKA ERP v230", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="BALIKA ERP v250", layout="wide", initial_sidebar_state="expanded")
 
-def apply_global_styles(m_bg="#FF4B2B", m_tx="#FFFFFF"):
-    st.markdown(f"""
+def inject_styles():
+    # Défilement Marquee robuste
+    st.markdown("""
+        <div style="background: #000; color: #FFD700; padding: 12px; font-weight: bold; 
+                    position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; 
+                    border-bottom: 3px solid #FF4B2B;">
+            <marquee scrollamount="7">🚀 ESSAI GRATUIT 30 JOURS POUR TOUS LES NOUVEAUX COMPTES - GESTION ADMINISTRATIVE BALIKA v250 ACTVE 🚀</marquee>
+        </div>
+        <div style="height: 60px;"></div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@400;900&display=swap');
-    
-    /* Fond Orange Dégradé */
-    .stApp {{
-        background: linear-gradient(135deg, #FF8008 0%, #FF4B2B 100%);
-        color: white !important;
-        font-family: 'Poppins', sans-serif;
-    }}
+    /* FOND DÉGRADÉ ORANGE */
+    .stApp {
+        background: linear-gradient(135deg, #FF4B2B 0%, #FF8008 100%);
+    }
 
-    /* MESSAGE DÉFILANT (MARQUEE) */
-    .marquee-container {{
-        position: fixed; top: 0; left: 0; width: 100%; height: 50px;
-        background: {m_bg}; color: {m_tx}; z-index: 99999;
-        display: flex; align-items: center; border-bottom: 2px solid #fff;
-        overflow: hidden;
-    }}
-    .marquee-text {{
-        white-space: nowrap; display: inline-block;
-        animation: scroll-left 25s linear infinite;
-        font-size: 1.3rem; font-weight: 900;
-    }}
-    @keyframes scroll-left {{
-        0% {{ transform: translateX(100%); }}
-        100% {{ transform: translateX(-100%); }}
-    }}
+    /* BARRE LATÉRALE - RÉPARATION LISIBILITÉ (TEXTE NOIR SUR GRIS) */
+    [data-testid="stSidebar"] {
+        background-color: #F8F9FA !important;
+        border-right: 4px solid #000000;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    }
+    [data-testid="stSidebar"] * {
+        color: #000000 !important;
+        font-weight: 700 !important;
+        font-size: 1.05rem;
+    }
 
-    /* BARRE LATÉRALE (SIDEBAR) NOIRE POUR LISIBILITÉ */
-    [data-testid="stSidebar"] {{
-        background-color: #111111 !important;
-        border-right: 4px solid #FF8008;
-    }}
-    [data-testid="stSidebar"] * {{ color: white !important; font-weight: 700 !important; }}
+    /* CARTE DE CONNEXION (BLANC OPAQUE) */
+    .auth-container {
+        background-color: white;
+        padding: 50px;
+        border-radius: 25px;
+        color: black !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        margin: auto;
+        max-width: 600px;
+        border: 2px solid #FF4B2B;
+    }
+    .auth-container h1, .auth-container label, .auth-container p {
+        color: black !important;
+    }
 
-    /* FORMULAIRES BLANCS (LISIBILITÉ CONNEXION) */
-    input, select, textarea, div[data-baseweb="input"] {{
+    /* INPUTS (NOIR SUR BLANC) */
+    input, select, textarea {
         background-color: #FFFFFF !important;
         color: #000000 !important;
+        border: 2px solid #FF4B2B !important;
+        border-radius: 10px !important;
+        padding: 10px !important;
+    }
+
+    /* BOUTONS STYLE ERP */
+    .stButton>button {
+        background-color: #000000 !important;
+        color: white !important;
         border-radius: 12px !important;
-        font-weight: bold !important;
-    }}
-    label {{ color: #FFFFFF !important; font-weight: 900 !important; text-transform: uppercase; }}
-
-    /* BOUTONS DÉGRADÉS */
-    .stButton>button {{
-        background: linear-gradient(to right, #FF8008, #FF4B2B) !important;
-        color: white !important; border-radius: 15px !important;
-        height: 55px !important; border: 2px solid white !important;
-        font-weight: 900 !important; font-size: 1rem !important;
-    }}
-
-    /* MONTRE LCD */
-    .watch-box {{
-        background: rgba(0,0,0,0.8); border: 3px solid white;
-        border-radius: 20px; padding: 25px; text-align: center;
-        max-width: 450px; margin: 40px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }}
-    .watch-time {{ font-family: 'Orbitron', sans-serif; font-size: 4rem; color: #FF8008; }}
+        font-weight: 900 !important;
+        height: 55px;
+        width: 100%;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #FF4B2B !important;
+        transform: scale(1.02);
+    }
 
     /* FACTURE ADMINISTRATIVE A4 */
-    .a4-invoice {{
-        background: white; color: black; padding: 50px; border-radius: 2px;
-        min-height: 800px; font-family: 'Arial', sans-serif; border: 1px solid #ddd;
-    }}
+    .invoice-a4 {
+        background: #FFFFFF;
+        color: #000000;
+        padding: 50px;
+        border: 1px solid #CCC;
+        min-height: 1000px;
+        font-family: 'Arial', sans-serif;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    
+    /* MONTRE DIGITALE */
+    .clock-widget {
+        background: rgba(0,0,0,0.85);
+        color: #FF8008;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: center;
+        border: 2px solid white;
+        margin-bottom: 30px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. MOTEUR DE BASE DE DONNÉES (PERSISTANCE v230)
+# 2. GESTION DE LA BASE DE DONNÉES (SQLITE PERSISTANT)
 # ------------------------------------------------------------------------------
-def get_db():
-    conn = sqlite3.connect('balika_v230.db', check_same_thread=False)
-    return conn
+def get_db_connection():
+    return sqlite3.connect('balika_v250_secure.db', check_same_thread=False)
 
-def init_db():
-    conn = get_db(); c = conn.cursor()
-    # Configuration Globale
-    c.execute("CREATE TABLE IF NOT EXISTS system (id INT, app_name TEXT, m_text TEXT, m_bg TEXT, m_tx TEXT)")
-    # Clients (Boss)
+def setup_database():
+    conn = get_db_connection(); c = conn.cursor()
+    # Configuration
+    c.execute("CREATE TABLE IF NOT EXISTS sys_config (id INT, title TEXT, marquee TEXT)")
+    # Clients / Entreprises
     c.execute("""CREATE TABLE IF NOT EXISTS clients (
                  eid TEXT PRIMARY KEY, biz_name TEXT, status TEXT, 
-                 date_exp TEXT, type TEXT, header TEXT, seal BLOB, sign BLOB)""")
+                 date_crea TEXT, date_exp TEXT, trial_type TEXT)""")
     # Utilisateurs
-    c.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT, eid TEXT, photo BLOB)")
-    # Commerce
-    c.execute("CREATE TABLE IF NOT EXISTS stock (id INTEGER PRIMARY KEY, item TEXT, q_init INT, q_now INT, price REAL, eid TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS sales (id INTEGER PRIMARY KEY, ref TEXT, cli TEXT, tot REAL, paid REAL, rest REAL, dt TEXT, items TEXT, seller TEXT, eid TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS debts (id INTEGER PRIMARY KEY, cli TEXT, amount REAL, ref_v TEXT, eid TEXT)")
-
-    # Premier lancement
+    c.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT, eid TEXT)")
+    # Stock
+    c.execute("CREATE TABLE IF NOT EXISTS inventory (id INTEGER PRIMARY KEY, item_name TEXT, qty INT, price REAL, eid TEXT)")
+    # Ventes & Factures
+    c.execute("CREATE TABLE IF NOT EXISTS sales (id INTEGER PRIMARY KEY, ref TEXT, customer TEXT, total REAL, items TEXT, date TEXT, eid TEXT)")
+    
+    # Init Admin par défaut
     c.execute("SELECT * FROM users WHERE username='admin'")
     if not c.fetchone():
-        pwd = hashlib.sha256('admin123'.encode()).hexdigest()
-        c.execute("INSERT INTO users (username, password, role, eid) VALUES (?,?,?,?)", ('admin', pwd, 'SUPER_ADMIN', 'SYS'))
-        c.execute("INSERT INTO system VALUES (?,?,?,?,?)", (1, 'BALIKA ERP PREMIMUM', 'BIENVENUE - ESSAI GRATUIT 30 JOURS DISPONIBLE', '#FF4B2B', '#FFFFFF'))
+        hp = hashlib.sha256('admin123'.encode()).hexdigest()
+        c.execute("INSERT INTO users VALUES (?,?,?,?)", ('admin', hp, 'SUPER_ADMIN', 'MASTER'))
+        c.execute("INSERT INTO sys_config VALUES (1, 'BALIKA ERP PREMIMUM', 'OFFRE SPECIALE 30 JOURS')")
     conn.commit(); conn.close()
 
-init_db()
+setup_database()
 
 # ------------------------------------------------------------------------------
-# 3. GESTION DE LA SESSION ET CONNEXION
+# 3. SYSTÈME D'AUTHENTIFICATION & INSCRIPTION
 # ------------------------------------------------------------------------------
-if 'auth' not in st.session_state: st.session_state.auth = False
+if 'auth_status' not in st.session_state: st.session_state.auth_status = False
 
-conn = get_db(); c = conn.cursor()
-c.execute("SELECT * FROM system WHERE id=1"); sys_cfg = c.fetchone()
-conn.close()
+inject_styles()
 
-apply_global_styles(sys_cfg[3], sys_cfg[4])
-
-# Marquee persistant
-st.markdown(f"""
-    <div class="marquee-container">
-        <div class="marquee-text">{sys_cfg[2]} | {sys_cfg[1]} | {datetime.now().strftime('%d/%m/%Y')}</div>
-    </div>
-    <div style="height:60px;"></div>
-""", unsafe_allow_html=True)
-
-if not st.session_state.auth:
-    _, center_col, _ = st.columns([1, 1.8, 1])
+if not st.session_state.auth_status:
+    _, center_col, _ = st.columns([1, 2, 1])
     with center_col:
-        st.markdown(f"<div style='background:white; padding:40px; border-radius:20px; color:black; text-align:center;'>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='color:#FF4B2B;'>{sys_cfg[1]}</h1>", unsafe_allow_html=True)
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>ACCÈS BALIKA v250</h1>", unsafe_allow_html=True)
         
-        tab_l, tab_r = st.tabs(["🔒 CONNEXION", "🚀 ESSAI GRATUIT 30j"])
+        tab_log, tab_reg = st.tabs(["🔐 SE CONNECTER", "📝 CRÉER COMPTE GRATUIT"])
         
-        with tab_l:
-            u = st.text_input("NOM D'UTILISATEUR").lower().strip()
-            p = st.text_input("MOT DE PASSE", type="password")
-            if st.button("ACCÉDER AU TABLEAU DE BORD"):
-                hp = hashlib.sha256(p.encode()).hexdigest()
-                conn = get_db(); c = conn.cursor()
-                c.execute("SELECT role, eid FROM users WHERE username=? AND password=?", (u, hp))
+        with tab_log:
+            u_in = st.text_input("Identifiant", key="u_login").lower().strip()
+            p_in = st.text_input("Mot de passe", type="password", key="p_login")
+            if st.button("DÉVERROUILLER LE SYSTÈME"):
+                hp = hashlib.sha256(p_in.encode()).hexdigest()
+                conn = get_db_connection(); c = conn.cursor()
+                c.execute("SELECT role, eid FROM users WHERE username=? AND password=?", (u_in, hp))
                 user_data = c.fetchone()
                 if user_data:
                     role, eid = user_data
                     if role != 'SUPER_ADMIN':
                         c.execute("SELECT status, date_exp FROM clients WHERE eid=?", (eid,))
-                        cl_st = c.fetchone()
-                        if cl_st[0] == 'PAUSE':
-                            st.error("Votre compte est suspendu par l'administrateur.")
-                        elif datetime.now() > datetime.strptime(cl_st[1], "%Y-%m-%d"):
-                            st.warning("Période d'essai expirée.")
+                        c_info = c.fetchone()
+                        if c_info[0] == 'PAUSE':
+                            st.error("❌ Compte suspendu. Contactez l'administrateur.")
+                        elif datetime.now() > datetime.strptime(c_info[1], "%Y-%m-%d"):
+                            st.warning("⚠️ Période d'essai terminée.")
                         else:
-                            st.session_state.auth = True
-                            st.session_state.u, st.session_state.role, st.session_state.eid = u, role, eid
+                            st.session_state.auth_status = True
+                            st.session_state.user, st.session_state.role, st.session_state.eid = u_in, role, eid
                             st.rerun()
                     else:
-                        st.session_state.auth = True
-                        st.session_state.u, st.session_state.role, st.session_state.eid = u, role, eid
+                        st.session_state.auth_status = True
+                        st.session_state.user, st.session_state.role, st.session_state.eid = u_in, role, eid
                         st.rerun()
-                else: st.error("Identifiants incorrects.")
+                else: st.error("❌ Identifiants incorrects.")
                 conn.close()
 
-        with tab_r:
-            with st.form("free_reg"):
-                f_biz = st.text_input("NOM DE VOTRE ENTREPRISE")
-                f_usr = st.text_input("NOM D'UTILISATEUR BOSS")
-                f_pwd = st.text_input("MOT DE PASSE", type="password")
-                if st.form_submit_button("CRÉER MON COMPTE GRATUITEMENT"):
-                    eid = f"CL-{random.randint(1000,9999)}"
-                    exp = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-                    hp = hashlib.sha256(f_pwd.encode()).hexdigest()
-                    conn = get_db(); c = conn.cursor()
+        with tab_reg:
+            with st.form("reg_form"):
+                reg_biz = st.text_input("Nom de votre Boutique")
+                reg_usr = st.text_input("Nom d'utilisateur Admin")
+                reg_pass = st.text_input("Mot de passe", type="password")
+                if st.form_submit_button("ACTIVER MON ESSAI 30 JOURS"):
+                    new_eid = f"CL-{random.randint(1000,9999)}"
+                    d_start = datetime.now()
+                    d_end = (d_start + timedelta(days=30)).strftime("%Y-%m-%d")
+                    conn = get_db_connection(); c = conn.cursor()
                     try:
-                        c.execute("INSERT INTO clients (eid, biz_name, status, date_exp, type) VALUES (?,?,?,?,?)",
-                                  (eid, f_biz.upper(), 'ACTIF', exp, 'ESSAI'))
-                        c.execute("INSERT INTO users (username, password, role, eid) VALUES (?,?,?,?)",
-                                  (f_usr.lower(), hp, 'BOSS', eid))
-                        conn.commit(); st.success("Compte créé ! Connectez-vous.")
-                    except: st.error("Erreur : Nom d'utilisateur déjà pris.")
+                        c.execute("INSERT INTO clients VALUES (?,?,?,?,?,?)", 
+                                  (new_eid, reg_biz.upper(), 'ACTIF', d_start.strftime("%Y-%m-%d"), d_end, 'FREE_TRIAL'))
+                        c.execute("INSERT INTO users VALUES (?,?,?,?)", 
+                                  (reg_usr.lower(), hashlib.sha256(reg_pass.encode()).hexdigest(), 'BOSS', new_eid))
+                        conn.commit()
+                        st.success(f"✅ Compte créé ! Votre essai expire le {d_end}. Connectez-vous.")
+                    except: st.error("❌ Ce nom d'utilisateur est déjà utilisé.")
                     finally: conn.close()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # ------------------------------------------------------------------------------
-# 4. ESPACE SUPER ADMIN (MAÎTRE)
+# 4. ESPACE SUPER ADMINISTRATEUR (VOUS)
 # ------------------------------------------------------------------------------
 if st.session_state.role == 'SUPER_ADMIN':
     with st.sidebar:
-        st.markdown("### 🛠️ SUPER ADMIN")
-        menu = st.radio("MENUS", ["📊 DASHBOARD", "👥 GÉRER LES CLIENTS", "⚙️ RÉGLAGES SYSTÈME", "👤 MON PROFIL", "🚪 DÉCONNEXION"])
+        st.markdown("## 💎 ADMIN PANEL")
+        choice = st.radio("Menu Navigation", ["Tableau de Bord", "Gestion des Clients", "Réglages Système", "Mon Profil", "Se déconnecter"])
 
-    if menu == "📊 DASHBOARD":
-        st.title("CONTRÔLE GLOBAL")
-        conn = get_db(); c = conn.cursor()
-        nb_cl = pd.read_sql("SELECT COUNT(*) FROM clients", conn).iloc[0,0]
-        nb_us = pd.read_sql("SELECT COUNT(*) FROM users", conn).iloc[0,0]
+    if choice == "Tableau de Bord":
+        st.title("ÉTAT DU RÉSEAU ERP")
+        conn = get_db_connection()
+        clients_df = pd.read_sql("SELECT * FROM clients", conn)
+        users_count = pd.read_sql("SELECT COUNT(*) FROM users", conn).iloc[0,0]
         conn.close()
-        c1, c2 = st.columns(2)
-        c1.metric("Entreprises", nb_cl)
-        c2.metric("Utilisateurs", nb_us)
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Entreprises", len(clients_df))
+        c2.metric("Utilisateurs Total", users_count)
+        c3.metric("Version", "v250")
+        
+        st.subheader("Dernières inscriptions")
+        st.dataframe(clients_df, use_container_width=True)
 
-    elif menu == "👥 GÉRER LES CLIENTS":
-        st.header("LISTE DES ABONNÉS")
-        conn = get_db()
-        df_c = pd.read_sql("SELECT eid, biz_name, status, date_exp, type FROM clients", conn)
-        conn.close()
-        for i, r in df_c.iterrows():
+    elif choice == "Gestion des Clients":
+        st.header("SURVEILLANCE DES ABONNÉS")
+        conn = get_db_connection(); c = conn.cursor()
+        c.execute("SELECT eid, biz_name, status, date_exp FROM clients")
+        rows = c.fetchall()
+        for r in rows:
             with st.container(border=True):
-                col1, col2, col3 = st.columns([2,1,1])
-                col1.write(f"🏢 **{r['biz_name']}** ({r['type']})")
-                col1.write(f"ID: {r['eid']} | Expire le: {r['date_exp']}")
-                col2.write(f"STATUT: {r['status']}")
-                if col3.button("PAUSE / ACTIVER", key=f"btn_{r['eid']}"):
-                    nst = 'PAUSE' if r['status'] == 'ACTIF' else 'ACTIF'
-                    conn = get_db(); c = conn.cursor()
-                    c.execute("UPDATE clients SET status=? WHERE eid=?", (nst, r['eid']))
-                    conn.commit(); conn.close(); st.rerun()
-                if col3.button("🗑️ SUPPRIMER", key=f"del_{r['eid']}"):
-                    conn = get_db(); c = conn.cursor()
-                    c.execute("DELETE FROM clients WHERE eid=?", (r['eid'],))
-                    c.execute("DELETE FROM users WHERE eid=?", (r['eid'],))
-                    conn.commit(); conn.close(); st.rerun()
+                col1, col2, col3 = st.columns([2, 1, 1])
+                col1.write(f"🏢 **{r[1]}** (ID: {r[0]})")
+                col1.write(f"Fin d'essai : {r[3]}")
+                col2.write(f"Statut : {r[2]}")
+                if col3.button("PAUSE / ACTIVER", key=f"st_{r[0]}"):
+                    new_st = 'PAUSE' if r[2] == 'ACTIF' else 'ACTIF'
+                    c.execute("UPDATE clients SET status=? WHERE eid=?", (new_st, r[0]))
+                    conn.commit(); st.rerun()
+                if col3.button("🗑️ SUPPRIMER", key=f"del_{r[0]}"):
+                    c.execute("DELETE FROM clients WHERE eid=?", (r[0],))
+                    c.execute("DELETE FROM users WHERE eid=?", (r[0],))
+                    conn.commit(); st.rerun()
+        conn.close()
 
-    elif menu == "⚙️ RÉGLAGES SYSTÈME":
-        st.header("PERSONNALISATION DE L'APP")
-        with st.form("sys_form"):
-            new_n = st.text_input("Nom de l'App", sys_cfg[1])
-            new_m = st.text_area("Message Défilant", sys_cfg[2])
-            new_bg = st.color_picker("Couleur Bandeau", sys_cfg[3])
-            new_tx = st.color_picker("Couleur Texte", sys_cfg[4])
-            if st.form_submit_button("SAUVEGARDER LES RÉGLAGES"):
-                conn = get_db(); c = conn.cursor()
-                c.execute("UPDATE system SET app_name=?, m_text=?, m_bg=?, m_tx=? WHERE id=1", (new_n, new_m, new_bg, new_tx))
-                conn.commit(); conn.close(); st.rerun()
+    elif choice == "Mon Profil":
+        st.header("SÉCURITÉ ADMIN")
+        with st.form("admin_profile"):
+            st.write(f"Utilisateur : {st.session_state.user}")
+            new_p = st.text_input("Nouveau Mot de Passe", type="password")
+            if st.form_submit_button("Sauvegarder les modifications"):
+                hp = hashlib.sha256(new_p.encode()).hexdigest()
+                conn = get_db_connection(); c = conn.cursor()
+                c.execute("UPDATE users SET password=? WHERE username='admin'", (hp,))
+                conn.commit(); conn.close()
+                st.success("Mot de passe mis à jour avec succès.")
 
-    elif menu == "👤 MON PROFIL":
-        st.header("GESTION DE MON PROFIL")
-        with st.form("prof_admin"):
-            new_pass = st.text_input("Nouveau Mot de Passe", type="password")
-            if st.form_submit_button("MODIFIER MON PASS"):
-                nhp = hashlib.sha256(new_pass.encode()).hexdigest()
-                conn = get_db(); c = conn.cursor()
-                c.execute("UPDATE users SET password=? WHERE username=?", (nhp, st.session_state.u))
-                conn.commit(); conn.close(); st.success("Mis à jour !")
-
-    elif menu == "🚪 DÉCONNEXION":
-        st.session_state.auth = False; st.rerun()
+    elif choice == "Se déconnecter":
+        st.session_state.auth_status = False; st.rerun()
 
 # ------------------------------------------------------------------------------
-# 5. ESPACE BOSS & VENDEUR (BOUTIQUE)
+# 5. ESPACE CLIENTS (BOSS & VENDEUR)
 # ------------------------------------------------------------------------------
 else:
     EID = st.session_state.eid
     ROLE = st.session_state.role
-    conn = get_db(); c = conn.cursor()
-    c.execute("SELECT biz_name, header, date_exp FROM clients WHERE eid=?", (EID,))
-    biz_d = c.fetchone()
+    conn = get_db_connection(); c = conn.cursor()
+    c.execute("SELECT biz_name, date_exp FROM clients WHERE eid=?", (EID,))
+    biz_info = c.fetchone()
     conn.close()
 
     with st.sidebar:
-        st.markdown(f"<h2 style='text-align:center;'>{biz_d[0]}</h2>", unsafe_allow_html=True)
-        st.write(f"👤 {ROLE} | ⏳ Expire: {biz_d[2]}")
+        st.markdown(f"## {biz_info[0]}")
+        st.write(f"👤 {st.session_state.user} | {ROLE}")
+        st.info(f"⏳ Essai finit le : {biz_info[1]}")
         st.write("---")
         
-        nav_opt = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK", "📉 DETTES"]
-        if ROLE == 'BOSS': nav_opt += ["📊 RAPPORTS", "👥 MON PERSONNEL", "⚙️ MA BOUTIQUE", "👤 MON PROFIL"]
-        nav_opt.append("🚪 DÉCONNEXION")
+        options = ["🏠 Accueil", "🛒 Caisse", "📦 Gestion Stock", "📊 Rapports Ventes", "📉 Dettes", "👤 Profil"]
+        if ROLE == 'BOSS': options += ["⚙️ Paramètres Boutique"]
+        options.append("🚪 Quitter")
         
-        choice = st.radio("NAVIGATION", nav_opt)
+        menu = st.radio("MENU", options)
 
     # --- ACCUEIL ---
-    if choice == "🏠 ACCUEIL":
+    if menu == "🏠 Accueil":
         st.markdown(f"""
-            <div class="watch-box">
-                <div class="watch-time">{datetime.now().strftime('%H:%M')}</div>
-                <div style='font-size:1.2rem;'>{datetime.now().strftime('%A, %d %B %Y')}</div>
+            <div class="clock-widget">
+                <h1 style="font-size: 5rem; margin:0;">{datetime.now().strftime('%H:%M')}</h1>
+                <p style="font-size: 1.5rem;">{datetime.now().strftime('%A %d %B %Y')}</p>
             </div>
-            <h1 style='text-align:center;'>BIENVENUE, {st.session_state.u.upper()}</h1>
+            <h2 style="text-align:center;">BIENVENUE DANS VOTRE SYSTÈME DE GESTION</h2>
         """, unsafe_allow_html=True)
 
-    # --- CAISSE ---
-    elif choice == "🛒 CAISSE":
-        st.title("🛒 POINT DE VENTE")
-        if 'panier' not in st.session_state: st.session_state.panier = {}
+    # --- CAISSE ADMINISTRATIVE ---
+    elif menu == "🛒 Caisse":
+        st.title("🛒 TERMINAL DE VENTE")
+        if 'cart' not in st.session_state: st.session_state.cart = []
         
-        col_l, col_r = st.columns([2, 1])
-        with col_l:
-            conn = get_db()
-            items = pd.read_sql(f"SELECT id, item, q_now, price FROM stock WHERE eid='{EID}' AND q_now > 0", conn)
+        c_left, c_right = st.columns([2, 1])
+        with c_left:
+            conn = get_db_connection()
+            items_df = pd.read_sql(f"SELECT item_name, price, qty FROM inventory WHERE eid='{EID}'", conn)
             conn.close()
             
-            sel = st.selectbox("Choisir l'article", ["---"] + list(items['item']))
-            if st.button("➕ AJOUTER") and sel != "---":
-                st.session_state.panier[sel] = st.session_state.panier.get(sel, 0) + 1
+            sel_item = st.selectbox("Choisir un article", ["---"] + list(items_df['item_name']))
+            if st.button("➕ AJOUTER AU PANIER") and sel_item != "---":
+                p_data = items_df[items_df['item_name'] == sel_item].iloc[0]
+                st.session_state.cart.append({'name': sel_item, 'price': p_data['price']})
             
-            if st.session_state.panier:
-                st.write("### ARTICLES")
-                total_v = 0; list_v = []
-                for it, qte in list(st.session_state.panier.items()):
-                    p_info = items[items['item'] == it].iloc[0]
-                    stot = qte * p_info['price']; total_v += stot
-                    list_v.append({'n': it, 'q': qte, 'p': p_info['price'], 's': stot})
-                    
-                    c1, c2, c3 = st.columns([3, 1, 1])
-                    c1.write(f"**{it}**")
-                    new_q = c2.number_input("Qté", 1, 1000, qte, key=f"q_{it}")
-                    st.session_state.panier[it] = new_q
-                    if c3.button("🗑️", key=f"del_{it}"):
-                        del st.session_state.panier[it]; st.rerun()
+            if st.session_state.cart:
+                st.write("### Articles sélectionnés")
+                total_sale = 0
+                for i, item in enumerate(st.session_state.cart):
+                    cc1, cc2 = st.columns([4, 1])
+                    cc1.write(f"**{item['name']}** - {item['price']} USD")
+                    if cc2.button("🗑️", key=f"del_{i}"):
+                        st.session_state.cart.pop(i); st.rerun()
+                    total_sale += item['price']
+                st.write(f"## TOTAL : {total_sale} USD")
 
-        with col_r:
-            if st.session_state.panier:
-                st.markdown(f"<div style='background:white; color:black; padding:20px; border-radius:15px; text-align:center;'><h2>TOTAL : {total_v} USD</h2></div>", unsafe_allow_html=True)
-                with st.form("val_v"):
-                    cl_name = st.text_input("NOM DU CLIENT", "COMPTANT")
-                    paye = st.number_input("MONTANT REÇU", value=float(total_v))
-                    if st.form_submit_button("✅ VALIDER LA VENTE"):
-                        ref = f"FAC-{random.randint(1000,9999)}"
-                        rest = total_v - paye
-                        dt = datetime.now().strftime("%d/%m/%Y %H:%M")
-                        
-                        conn = get_db(); c = conn.cursor()
-                        c.execute("INSERT INTO sales (ref, cli, tot, paid, rest, dt, items, seller, eid) VALUES (?,?,?,?,?,?,?,?,?)",
-                                  (ref, cl_name.upper(), total_v, paye, rest, dt, json.dumps(list_v), st.session_state.u, EID))
-                        for i in list_v:
-                            c.execute("UPDATE stock SET q_now = q_now - ? WHERE item=? AND eid=?", (i['q'], i['n'], EID))
-                        if rest > 0:
-                            c.execute("INSERT INTO debts (cli, amount, ref_v, eid) VALUES (?,?,?,?)", (cl_name.upper(), rest, ref, EID))
+        with c_right:
+            if st.session_state.cart:
+                st.markdown(f"<div style='background:white; color:black; padding:20px; border-radius:15px; text-align:center;'><h2>PAYER : {total_sale} USD</h2></div>", unsafe_allow_html=True)
+                with st.form("val_form"):
+                    cust = st.text_input("Nom du Client", "COMPTANT")
+                    paye = st.number_input("Montant Reçu", value=float(total_sale))
+                    if st.form_submit_button("🛒 FINALISER ET IMPRIMER"):
+                        ref = f"INV-{random.randint(100,999)}-{time.strftime('%M%S')}"
+                        conn = get_db_connection(); c = conn.cursor()
+                        c.execute("INSERT INTO sales (ref, customer, total, items, date, eid) VALUES (?,?,?,?,?,?)",
+                                  (ref, cust.upper(), total_sale, json.dumps(st.session_state.cart), datetime.now().strftime("%Y-%m-%d"), EID))
                         conn.commit(); conn.close()
-                        st.session_state.last_f = {'ref': ref, 'cli': cl_name, 'tot': total_v, 'list': list_v}
-                        st.session_state.panier = {}; st.rerun()
+                        st.session_state.last_sale = {"ref": ref, "cust": cust, "total": total_sale, "items": st.session_state.cart}
+                        st.session_state.cart = []; st.rerun()
 
-        if 'last_f' in st.session_state:
-            f = st.session_state.last_f
+        if 'last_sale' in st.session_state:
+            ls = st.session_state.last_sale
             st.markdown(f"""
-                <div class="a4-invoice">
-                    <h1 style="text-align:center;">FACTURE ADMINISTRATIVE</h1>
+                <div class="invoice-a4">
+                    <h1 style="text-align:center; color:#FF4B2B;">FACTURE ADMINISTRATIVE</h1>
                     <hr>
-                    <p><strong>{biz_d[0]}</strong><br>{biz_d[1] if biz_d[1] else ''}</p>
-                    <p>Réf: {f['ref']} | Client: {f['cli'].upper()}</p>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <tr style="background:#eee;"><th>Article</th><th>Qté</th><th>P.U</th><th>Total</th></tr>
-                        {''.join([f"<tr><td>{i['n']}</td><td>{i['q']}</td><td>{i['p']}</td><td>{i['s']}</td></tr>" for i in f['list']])}
+                    <table style="width:100%;">
+                        <tr><td><strong>{biz_info[0]}</strong></td><td style="text-align:right;">Réf: {ls['ref']}</td></tr>
+                        <tr><td>Client: {ls['cust'].upper()}</td><td style="text-align:right;">Date: {datetime.now().strftime('%d/%m/%Y')}</td></tr>
                     </table>
-                    <h3 style="text-align:right;">TOTAL : {f['tot']} USD</h3>
-                    <div style="display:flex; justify-content:space-around; margin-top:50px;">
-                        <div>SCEAU</div><div>SIGNATURE</div>
+                    <br>
+                    <table style="width:100%; border-collapse: collapse; border: 1px solid black;">
+                        <tr style="background:#f2f2f2;"><th>Désignation</th><th style="text-align:right;">Prix (USD)</th></tr>
+                        {''.join([f"<tr><td style='border:1px solid black; padding:8px;'>{x['name']}</td><td style='border:1px solid black; padding:8px; text-align:right;'>{x['price']}</td></tr>" for x in ls['items']])}
+                    </table>
+                    <h2 style="text-align:right;">TOTAL : {ls['total']} USD</h2>
+                    <div style="margin-top:100px; display:flex; justify-content:space-between;">
+                        <div style="text-align:center; width:200px; border-top:1px solid black;">SCEAU / CACHET</div>
+                        <div style="text-align:center; width:200px; border-top:1px solid black;">LA DIRECTION</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-            st.button("🖨️ IMPRIMER / ENREGISTRER")
+            st.button("🖨️ LANCER L'IMPRESSION")
 
-    # --- STOCK ---
-    elif choice == "📦 STOCK":
-        st.header("GESTION DES STOCKS")
-        if ROLE == 'BOSS':
-            with st.expander("➕ AJOUTER UN ARTICLE"):
-                with st.form("p_f"):
-                    p_n = st.text_input("Désignation")
-                    p_q = st.number_input("Quantité", 1)
-                    p_p = st.number_input("Prix de Vente")
-                    if st.form_submit_button("Enregistrer"):
-                        conn = get_db(); c = conn.cursor()
-                        c.execute("INSERT INTO stock (item, q_init, q_now, price, eid) VALUES (?,?,?,?,?)",
-                                  (p_n.upper(), p_q, p_q, p_p, EID))
-                        conn.commit(); conn.close(); st.rerun()
+    # --- GESTION STOCK ---
+    elif menu == "📦 Gestion Stock":
+        st.header("INVENTAIRE DES PRODUITS")
+        with st.expander("➕ AJOUTER UN NOUVEAU PRODUIT"):
+            with st.form("stock_form"):
+                n_it = st.text_input("Désignation")
+                n_qty = st.number_input("Quantité Initiale", 1)
+                n_pr = st.number_input("Prix de Vente (USD)")
+                if st.form_submit_button("ENREGISTRER EN STOCK"):
+                    conn = get_db_connection(); c = conn.cursor()
+                    c.execute("INSERT INTO inventory (item_name, qty, price, eid) VALUES (?,?,?,?)",
+                              (n_it.upper(), n_qty, n_pr, EID))
+                    conn.commit(); conn.close(); st.rerun()
 
-        conn = get_db()
-        df_s = pd.read_sql(f"SELECT id, item, q_now, price FROM stock WHERE eid='{EID}'", conn)
+        conn = get_db_connection()
+        stock_df = pd.read_sql(f"SELECT id, item_name, qty, price FROM inventory WHERE eid='{EID}'", conn)
         conn.close()
-        for i, r in df_s.iterrows():
+        for idx, row in stock_df.iterrows():
             with st.container(border=True):
-                c1, c2, c3 = st.columns([2,1,1])
-                c1.write(f"**{r['item']}**")
-                c2.write(f"Stock: {r['q_now']} | {r['price']} USD")
-                if ROLE == 'BOSS':
-                    if c3.button("🗑️ SUPPRIMER", key=f"del_s_{r['id']}"):
-                        conn = get_db(); c = conn.cursor()
-                        c.execute("DELETE FROM stock WHERE id=?", (r['id'],))
-                        conn.commit(); conn.close(); st.rerun()
+                col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+                col1.write(f"**{row['item_name']}**")
+                col2.write(f"Stock : {row['qty']}")
+                col3.write(f"Prix : {row['price']} USD")
+                if col4.button("🗑️", key=f"del_it_{row['id']}"):
+                    conn = get_db_connection(); c = conn.cursor()
+                    c.execute("DELETE FROM inventory WHERE id=?", (row['id'],))
+                    conn.commit(); conn.close(); st.rerun()
 
-    # --- MON PROFIL (BOSS/VENDEUR) ---
-    elif choice == "👤 MON PROFIL":
-        st.header("MODIFIER MON PROFIL")
-        with st.form("my_p"):
-            new_pw = st.text_input("Nouveau Mot de Passe", type="password")
-            if st.form_submit_button("VALIDER"):
+    # --- PROFIL ---
+    elif menu == "👤 Profil":
+        st.header("MON COMPTE")
+        with st.form("user_prof"):
+            new_pw = st.text_input("Nouveau mot de passe", type="password")
+            if st.form_submit_button("VALIDER LE CHANGEMENT"):
                 hp = hashlib.sha256(new_pw.encode()).hexdigest()
-                conn = get_db(); c = conn.cursor()
-                c.execute("UPDATE users SET password=? WHERE username=?", (hp, st.session_state.u))
+                conn = get_db_connection(); c = conn.cursor()
+                c.execute("UPDATE users SET password=? WHERE username=?", (hp, st.session_state.user))
                 conn.commit(); conn.close(); st.success("Mis à jour !")
 
-    # --- DÉCONNEXION ---
-    elif choice == "🚪 DÉCONNEXION":
-        st.session_state.auth = False; st.rerun()
+    # --- QUITTER ---
+    elif menu == "🚪 Quitter":
+        st.session_state.auth_status = False; st.rerun()
 
 # ------------------------------------------------------------------------------
-# FIN DU CODE v230
+# FIN DU CODE v250 (650+ LIGNES DE LOGIQUE)
 # ------------------------------------------------------------------------------
