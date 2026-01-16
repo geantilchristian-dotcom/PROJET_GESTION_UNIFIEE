@@ -54,7 +54,7 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN date_creation TEXT")
     
     run_db("CREATE TABLE IF NOT EXISTS system_config (id INTEGER PRIMARY KEY, app_name TEXT, marquee_text TEXT, taux_global REAL)")
-    run_db("CREATE TABLE IF NOT EXISTS ent_infos (ent_id TEXT PRIMARY KEY, nom_boutique TEXT, adresse TEXT, telephone TEXT, rccm TEXT)")
+    run_db("CREATE TABLE IF NOT EXISTS ent_infos (ent_id TEXT PRIMARY KEY, nom_boutique TEXT, adresse TEXT, telephone TEXT, rccm TEXT, custom_app_name TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS produits (id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, stock_actuel INTEGER, prix_vente REAL, devise TEXT, ent_id TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client TEXT, total REAL, paye REAL, reste REAL, devise TEXT, date_v TEXT, vendeur TEXT, ent_id TEXT, details_json TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS dettes (id INTEGER PRIMARY KEY AUTOINCREMENT, client TEXT, montant REAL, devise TEXT, ref_v TEXT, ent_id TEXT)")
@@ -70,10 +70,14 @@ def init_db():
 init_db()
 
 # ==============================================================================
-# 3. DESIGN & MARQUEE FIXE
+# 3. DESIGN & MARQUEE FIXE (ADAPTÉ MOBILE)
 # ==============================================================================
 cfg = run_db("SELECT app_name, marquee_text, taux_global FROM system_config WHERE id=1", fetch=True)
-APP_NAME, MARQUEE, TX_G = cfg[0] if cfg else ("BALIKA", "Bienvenue", 2850.0)
+APP_NAME_SYS, MARQUEE, TX_G = cfg[0] if cfg else ("BALIKA", "Bienvenue", 2850.0)
+
+# Récupérer le nom d'app personnalisé de l'utilisateur
+res_app = run_db("SELECT custom_app_name FROM ent_infos WHERE ent_id=?", (st.session_state.ent_id,), fetch=True)
+USER_APP_NAME = res_app[0][0] if (res_app and res_app[0][0]) else APP_NAME_SYS
 
 st.markdown(f"""
     <style>
@@ -84,12 +88,17 @@ st.markdown(f"""
     .spacer {{ margin-top: 60px; }}
     .stButton>button {{ background-color: #0055ff !important; color: white !important; border-radius: 12px; font-weight: bold; height: 45px; width: 100%; border: 2px solid white; }}
     .total-frame {{ background: #000; color: #00FF00; padding: 20px; border: 4px solid #0055ff; border-radius: 15px; text-align: center; margin: 10px 0; }}
-    .fac-80mm {{ background: white; color: black !important; padding: 10px; width: 300px; margin: auto; font-family: 'Courier New'; border: 1px solid black; font-size: 12px; line-height: 1.2; }}
+    .fac-80mm {{ background: white; color: black !important; padding: 10px; width: 100%; max-width: 300px; margin: auto; font-family: 'Courier New'; border: 1px solid black; font-size: 12px; line-height: 1.2; }}
     .fac-80mm * {{ color: black !important; }}
     .fac-a4 {{ background: white; color: black !important; padding: 30px; width: 95%; margin: auto; border: 1px solid #ccc; font-family: Arial; }}
     .fac-a4 * {{ color: black !important; }}
     div[data-baseweb="input"] {{ background: white !important; border-radius: 8px !important; }}
     input {{ color: black !important; font-weight: bold !important; }}
+    /* Optimisation mobile */
+    @media (max-width: 600px) {{
+        .stColumn {{ width: 100% !important; }}
+        .fac-80mm {{ width: 95% !important; }}
+    }}
     </style>
     <div class="fixed-header"><marquee scrollamount="8">{MARQUEE}</marquee></div>
     <div class="spacer"></div>
@@ -103,7 +112,7 @@ def get_entete():
 # 4. AUTHENTIFICATION
 # ==============================================================================
 if not st.session_state.auth:
-    st.markdown(f"<h1 align='center'>{APP_NAME}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 align='center'>{USER_APP_NAME}</h1>", unsafe_allow_html=True)
     t1, t2 = st.tabs(["🔑 CONNEXION", "🚀 CRÉER BOUTIQUE"])
     with t1:
         u = st.text_input("Identifiant").lower().strip()
@@ -150,14 +159,14 @@ with st.sidebar:
 if st.session_state.role != "SUPER_ADMIN":
 
     if st.session_state.page == "ACCUEIL":
-        st.header("🏠 TABLEAU DE BORD")
+        st.header(f"🏠 {USER_APP_NAME}")
         v_jr = run_db("SELECT SUM(total) FROM ventes WHERE ent_id=? AND date_v LIKE ?", (st.session_state.ent_id, f"{datetime.now().strftime('%d/%m/%Y')}%"), fetch=True)[0][0] or 0
         st.metric("Ventes du jour", f"{v_jr:,.2f} $")
 
     elif st.session_state.page == "STOCK":
         st.header("📦 GESTION DU STOCK")
         with st.form("new_art"):
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3 = st.columns([2,1,1])
             dn, sq, pv = c1.text_input("Désignation"), c2.number_input("Stock", 1), c3.number_input("Prix Vente $")
             if st.form_submit_button("AJOUTER AU STOCK"):
                 run_db("INSERT INTO produits (designation, stock_actuel, prix_vente, devise, ent_id) VALUES (?,?,?,?,?)", (dn.upper(), sq, pv, "USD", st.session_state.ent_id)); st.rerun()
@@ -227,7 +236,9 @@ if st.session_state.role != "SUPER_ADMIN":
             with st.container(border=True):
                 st.write(f"👤 **{dc}** | **{dm:,.2f} {dv}** (Facture: {dr})")
                 tranche = st.number_input("Rembourser", 0.0, float(dm), key=f"p_{di}")
-                if st.button("ENCAISSER", key=f"b_{di}"): run_db("UPDATE dettes SET montant = montant - ? WHERE id=?", (tranche, di)); st.rerun()
+                b1, b2 = st.columns(2)
+                if b1.button("ENCAISSER", key=f"b_{di}"): run_db("UPDATE dettes SET montant = montant - ? WHERE id=?", (tranche, di)); st.rerun()
+                if b2.button("🗑️ SUPPRIMER CLIENT", key=f"delc_{di}"): run_db("DELETE FROM dettes WHERE id=?", (di,)); st.rerun()
 
     elif st.session_state.page == "VENDEURS":
         st.header("👥 VENDEURS")
@@ -242,16 +253,21 @@ if st.session_state.role != "SUPER_ADMIN":
     elif st.session_state.page == "RÉGLAGES":
         st.header("⚙️ RÉGLAGES")
         e = get_entete()
-        with st.expander("📝 EN-TÊTE FACTURE"):
+        with st.expander("🏢 NOM DE L'APP & EN-TÊTE FACTURE"):
             with st.form("e"):
+                new_app_val = st.text_input("Nom de l'Application", USER_APP_NAME)
                 n, a, t, r = st.text_input("Entreprise", e[0]), st.text_input("Adresse", e[1]), st.text_input("Tél", e[2]), st.text_input("RCCM", e[3])
-                if st.form_submit_button("SAUVER"): run_db("INSERT OR REPLACE INTO ent_infos (ent_id, nom_boutique, adresse, telephone, rccm) VALUES (?,?,?,?,?)", (st.session_state.ent_id, n, a, t, r)); st.rerun()
+                if st.form_submit_button("SAUVER"): 
+                    run_db("UPDATE ent_infos SET nom_boutique=?, adresse=?, telephone=?, rccm=?, custom_app_name=? WHERE ent_id=?", (n, a, t, r, new_app_val, st.session_state.ent_id)); st.rerun()
         
-        with st.expander("🔒 MOT DE PASSE"):
-            po, pn = st.text_input("Ancien", type="password"), st.text_input("Nouveau", type="password")
-            if st.button("MODIFIER"):
-                curr = run_db("SELECT password FROM users WHERE username=?", (st.session_state.user,), fetch=True)
-                if make_hashes(po) == curr[0][0]: run_db("UPDATE users SET password=? WHERE username=?", (make_hashes(pn), st.session_state.user)); st.success("Fait")
+        with st.expander("🔒 MON COMPTE (USER & PASS)"):
+            new_u = st.text_input("Nouvel Identifiant", st.session_state.user)
+            new_p = st.text_input("Nouveau Mot de Passe", type="password")
+            if st.button("METTRE À JOUR MON PROFIL"):
+                run_db("UPDATE users SET username=?, password=? WHERE username=?", (new_u.lower(), make_hashes(new_p), st.session_state.user))
+                st.session_state.user = new_u.lower()
+                st.success("Profil mis à jour !")
+                st.rerun()
         
         with st.expander("⚠️ ZONE DANGER"):
             if st.button("💣 RÉINITIALISER COMPTE"):
