@@ -6,7 +6,7 @@ import hashlib
 import httpx
 
 # ==========================================
-# 1. CŒUR DU SYSTÈME & CONNEXIONS (v236)
+# 1. CŒUR DU SYSTÈME & CONNEXIONS (v237)
 # ==========================================
 st.set_page_config(page_title="BALIKA ERP PRO", layout="wide", initial_sidebar_state="collapsed")
 
@@ -48,33 +48,47 @@ else:
     C_ENT, C_MSG, C_TAUX, C_ADR, C_TEL = "BALIKA ERP", "Bienvenue", 2850.0, "ADRESSE", "000"
 
 # ==========================================
-# 2. STYLE CSS MOBILE (CORRECTION LISIBILITÉ ARTICLE)
+# 2. STYLE CSS (CORRECTION LISIBILITÉ TOTALE)
 # ==========================================
 st.markdown(f"""
     <style>
+    /* Fond global blanc */
     .stApp {{ background-color: #FFFFFF !important; }}
     
-    /* Correction spécifique pour le nom de l'article sur téléphone */
+    /* Forçage de la couleur Noire pour TOUS les textes et titres */
+    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span {{ 
+        color: #000000 !important; 
+    }}
+    
+    /* Style spécifique pour l'heure sur l'accueil */
+    .clock-box h1 {{
+        color: #000000 !important;
+        font-weight: 900 !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }}
+
+    /* Correction Selectbox (Article) pour téléphone */
     div[data-baseweb="select"] > div {{
         background-color: #1E1E1E !important; 
         color: white !important;
         border-radius: 10px !important;
     }}
-    div[data-testid="stMarkdownContainer"] p {{ color: black !important; }}
     
+    /* Boutons */
     .stButton>button {{ 
         background: linear-gradient(to right, #FF8C00, #FF4500) !important; 
         color: white !important; border-radius: 12px !important; height: 55px !important; font-weight: bold; border: none; width: 100%;
     }}
+    
+    /* Marquee */
     .marquee-container {{ width: 100%; overflow: hidden; background: #333; color: #FF8C00; padding: 12px 0; font-weight: bold; }}
     .marquee-text {{ display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; }}
     @keyframes marquee {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-    .total-frame {{ border: 3px solid #FF8C00; background: #FFF3E0; color: #E65100; padding: 20px; border-radius: 15px; font-size: 26px; font-weight: bold; text-align: center; margin: 15px 0; }}
     
-    .print-area {{ background: white; color: black; padding: 10px; border: 1px solid #eee; margin: auto; }}
-    .f-80mm {{ width: 100%; max-width: 310px; font-size: 12px; font-family: monospace; }}
-    .f-A4 {{ width: 100%; font-size: 16px; padding: 40px; }}
+    /* Cadre Total */
+    .total-frame {{ border: 3px solid #FF8C00; background: #FFF3E0; color: #E65100 !important; padding: 20px; border-radius: 15px; font-size: 26px; font-weight: bold; text-align: center; margin: 15px 0; }}
     
+    .print-area {{ background: white; color: black !important; padding: 10px; border: 1px solid #eee; margin: auto; }}
     @media print {{ .no-print {{ display: none !important; }} }}
     </style>
     <div class="marquee-container no-print"><div class="marquee-text">{C_MSG}</div></div>
@@ -121,7 +135,10 @@ with st.sidebar:
 # ==========================================
 
 if st.session_state.page == "ACCUEIL":
-    st.markdown(f'<center><div style="border:4px solid orange; padding:30px; border-radius:25px; background:#FFF3E0; margin-top:20px;"><h1>⌚ {datetime.now().strftime("%H:%M")}</h1><h3>{datetime.now().strftime("%d/%m/%Y")}</h3></div></center>', unsafe_allow_html=True)
+    st.markdown(f'''<center><div class="clock-box" style="border:4px solid orange; padding:30px; border-radius:25px; background:#FFF3E0; margin-top:20px;">
+        <h1>⌚ {datetime.now().strftime("%H:%M")}</h1>
+        <h3>{datetime.now().strftime("%d/%m/%Y")}</h3>
+        </div></center>''', unsafe_allow_html=True)
     v = query_cloud("ventes")
     if v:
         df = pd.DataFrame(v)
@@ -234,10 +251,10 @@ elif st.session_state.page == "STOCK":
     st.write("---")
     stk = query_cloud("produits")
     if stk:
-        df_stk = pd.DataFrame(stk)
-        st.dataframe(df_stk[['designation', 'stock_actuel', 'prix_vente', 'devise_origine']], use_container_width=True)
         for r in stk:
-            if st.button(f"🗑️ Supprimer {r['designation']}", key=f"p_{r['id']}"):
+            c1, c2 = st.columns([4,1])
+            c1.write(f"**{r['designation']}** | Stock: {r['stock_actuel']}")
+            if c2.button("🗑️", key=f"p_{r['id']}"):
                 run_action("produits", "DELETE", f"id=eq.{r['id']}"); st.rerun()
 
 elif st.session_state.page == "RAPPORT":
