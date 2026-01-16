@@ -8,9 +8,9 @@ import json
 import io
 
 # ==============================================================================
-# 1. CONFIGURATION SYSTÈME (v2000 - INTÉGRALITÉ CONSERVÉE)
+# 1. CONFIGURATION SYSTÈME (v2001 - AUCUNE LIGNE SUPPRIMÉE)
 # ==============================================================================
-st.set_page_config(page_title="BALIKA ERP v2000", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="BALIKA ERP v2001", layout="wide", initial_sidebar_state="collapsed")
 
 if 'auth' not in st.session_state:
     st.session_state.update({
@@ -34,36 +34,35 @@ def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 # ==============================================================================
-# 2. INITIALISATION & MIGRATION DES NOUVELLES COLONNES
+# 2. INITIALISATION & RÉPARATION AUTO (FIX ERREUR SQLITE)
 # ==============================================================================
 def init_db():
+    # Création des tables de base si non existantes
     run_db("""CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY, password TEXT, role TEXT, ent_id TEXT, 
         status TEXT DEFAULT 'ACTIF', photo BLOB, telephone TEXT, date_creation TEXT)""")
     
-    # Migration pour ajouter les colonnes si elles manquent dans 'users'
-    with sqlite3.connect('balika_master_final.db') as conn:
-        cursor = conn.cursor()
-        columns = [info[1] for info in cursor.execute("PRAGMA table_info(users)").fetchall()]
-        if 'telephone' not in columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN telephone TEXT DEFAULT '0000'")
-        if 'date_creation' not in columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN date_creation TEXT")
-    
-    run_db("CREATE TABLE IF NOT EXISTS system_config (id INTEGER PRIMARY KEY, app_name TEXT, marquee_text TEXT, taux_global REAL)")
-    
-    # Création ent_infos avec la nouvelle colonne custom_app_name
     run_db("""CREATE TABLE IF NOT EXISTS ent_infos (
         ent_id TEXT PRIMARY KEY, nom_boutique TEXT, adresse TEXT, 
-        telephone TEXT, rccm TEXT, custom_app_name TEXT)""")
+        telephone TEXT, rccm TEXT)""")
 
-    # Migration forcée pour 'ent_infos'
+    # --- MIGRATION SÉCURISÉE (Évite sqlite3.OperationalError) ---
     with sqlite3.connect('balika_master_final.db') as conn:
         cursor = conn.cursor()
-        cols_ent = [i[1] for i in cursor.execute("PRAGMA table_info(ent_infos)").fetchall()]
+        
+        # Vérification colonnes table 'users'
+        cols_users = [info[1] for info in cursor.execute("PRAGMA table_info(users)").fetchall()]
+        if 'telephone' not in cols_users:
+            cursor.execute("ALTER TABLE users ADD COLUMN telephone TEXT DEFAULT '0000'")
+        if 'date_creation' not in cols_users:
+            cursor.execute("ALTER TABLE users ADD COLUMN date_creation TEXT")
+            
+        # Vérification colonnes table 'ent_infos'
+        cols_ent = [info[1] for info in cursor.execute("PRAGMA table_info(ent_infos)").fetchall()]
         if 'custom_app_name' not in cols_ent:
             cursor.execute("ALTER TABLE ent_infos ADD COLUMN custom_app_name TEXT")
 
+    run_db("CREATE TABLE IF NOT EXISTS system_config (id INTEGER PRIMARY KEY, app_name TEXT, marquee_text TEXT, taux_global REAL)")
     run_db("CREATE TABLE IF NOT EXISTS produits (id INTEGER PRIMARY KEY AUTOINCREMENT, designation TEXT, stock_actuel INTEGER, prix_vente REAL, devise TEXT, ent_id TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client TEXT, total REAL, paye REAL, reste REAL, devise TEXT, date_v TEXT, vendeur TEXT, ent_id TEXT, details_json TEXT)")
     run_db("CREATE TABLE IF NOT EXISTS dettes (id INTEGER PRIMARY KEY AUTOINCREMENT, client TEXT, montant REAL, devise TEXT, ref_v TEXT, ent_id TEXT)")
@@ -74,24 +73,24 @@ def init_db():
                ('admin', make_hashes("admin123"), 'SUPER_ADMIN', 'SYSTEM', datetime.now().strftime("%d/%m/%Y")))
     
     if not run_db("SELECT * FROM system_config", fetch=True):
-        run_db("INSERT INTO system_config (id, app_name, marquee_text, taux_global) VALUES (1, 'BALIKA ERP', 'BIENVENUE SUR BALIKA ERP v2000', 2850.0)")
+        run_db("INSERT INTO system_config (id, app_name, marquee_text, taux_global) VALUES (1, 'BALIKA ERP', 'BIENVENUE SUR BALIKA ERP v2001', 2850.0)")
 
 init_db()
 
 # ==============================================================================
-# 3. DESIGN & RÉCUPÉRATION DU NOM PERSONNALISÉ
+# 3. DESIGN & NOM APP DYNAMIQUE
 # ==============================================================================
 cfg = run_db("SELECT app_name, marquee_text, taux_global FROM system_config WHERE id=1", fetch=True)
 SYS_NAME, MARQUEE, TX_G = cfg[0] if cfg else ("BALIKA", "Bienvenue", 2850.0)
 
-# Récupération du nom d'application personnalisé pour cet utilisateur
+# Récupérer le nom personnalisé s'il existe
 res_app = run_db("SELECT custom_app_name FROM ent_infos WHERE ent_id=?", (st.session_state.ent_id,), fetch=True)
 MY_APP_NAME = res_app[0][0] if (res_app and res_app[0][0]) else SYS_NAME
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #FF8C00 !important; }}
-    h1, h2, h3, p, label {{ color: white !important; text-align: center; }}
+    h1, h2, h3, p, label, .stMarkdown {{ color: white !important; }}
     .fixed-header {{ position: fixed; top: 0; left: 0; width: 100%; background: #000; color: #00FF00; height: 50px; z-index: 999999; display: flex; align-items: center; border-bottom: 2px solid white; }}
     marquee {{ font-size: 20px; font-weight: bold; font-family: 'Courier New'; padding-top: 5px; }}
     .spacer {{ margin-top: 60px; }}
@@ -114,7 +113,7 @@ def get_entete():
 # 4. AUTHENTIFICATION
 # ==============================================================================
 if not st.session_state.auth:
-    st.markdown(f"<h1>{MY_APP_NAME}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 align='center'>{MY_APP_NAME}</h1>", unsafe_allow_html=True)
     t1, t2 = st.tabs(["🔑 CONNEXION", "🚀 CRÉER BOUTIQUE"])
     with t1:
         u = st.text_input("Identifiant").lower().strip()
@@ -156,7 +155,7 @@ with st.sidebar:
     if st.button("🚪 QUITTER"): st.session_state.auth = False; st.rerun()
 
 # ==============================================================================
-# 6. MÉTIER (STOCK, CAISSE, DETTES)
+# 6. MÉTIER
 # ==============================================================================
 if st.session_state.role != "SUPER_ADMIN":
 
@@ -166,11 +165,11 @@ if st.session_state.role != "SUPER_ADMIN":
         st.metric("Ventes du jour", f"{v_jr:,.2f} $")
 
     elif st.session_state.page == "STOCK":
-        st.header("📦 STOCK")
+        st.header("📦 GESTION DU STOCK")
         with st.form("new_art"):
             c1, c2, c3 = st.columns([2,1,1])
             dn, sq, pv = c1.text_input("Désignation"), c2.number_input("Stock", 1), c3.number_input("Prix Vente $")
-            if st.form_submit_button("AJOUTER"):
+            if st.form_submit_button("AJOUTER AU STOCK"):
                 run_db("INSERT INTO produits (designation, stock_actuel, prix_vente, devise, ent_id) VALUES (?,?,?,?,?)", (dn.upper(), sq, pv, "USD", st.session_state.ent_id)); st.rerun()
         
         for pi, pd, ps, pp in run_db("SELECT id, designation, stock_actuel, prix_vente FROM produits WHERE ent_id=?", (st.session_state.ent_id,), fetch=True):
@@ -217,7 +216,7 @@ if st.session_state.role != "SUPER_ADMIN":
             if st.button("🖨️ IMPRIMER"): st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
 
     elif st.session_state.page == "DETTES":
-        st.header("📉 DETTES CLIENTS")
+        st.header("📉 DETTES")
         ds = run_db("SELECT id, client, montant, devise, ref_v FROM dettes WHERE ent_id=? AND montant > 0", (st.session_state.ent_id,), fetch=True)
         for di, dc, dm, dv, dr in ds:
             with st.container(border=True):
@@ -225,39 +224,35 @@ if st.session_state.role != "SUPER_ADMIN":
                 c1, c2 = st.columns(2)
                 tr = c1.number_input("Payer", 0.0, float(dm), key=f"p_{di}")
                 if c1.button("ENCAISSER", key=f"b_{di}"): run_db("UPDATE dettes SET montant = montant - ? WHERE id=?", (tr, di)); st.rerun()
-                # NOUVELLE LIGNE : SUPPRESSION CLIENT
                 if c2.button("🗑️ SUPPRIMER CLIENT", key=f"del_{di}"): run_db("DELETE FROM dettes WHERE id=?", (di,)); st.rerun()
 
     elif st.session_state.page == "RÉGLAGES":
         st.header("⚙️ RÉGLAGES")
         e = get_entete()
         
-        # NOUVELLE SECTION : NOM DE L'APP
         st.subheader("🏢 PERSONNALISATION")
-        with st.form("app_name_form"):
-            new_title = st.text_input("Nom de l'application", MY_APP_NAME)
-            if st.form_submit_button("APPLIQUER LE NOM"):
-                run_db("UPDATE ent_infos SET custom_app_name=? WHERE ent_id=?", (new_title, st.session_state.ent_id))
-                st.success("Nom d'application mis à jour !"); st.rerun()
+        with st.form("app_custom"):
+            nt = st.text_input("Nom de votre Application", MY_APP_NAME)
+            if st.form_submit_button("APPLIQUER"):
+                run_db("UPDATE ent_infos SET custom_app_name=? WHERE ent_id=?", (nt, st.session_state.ent_id)); st.rerun()
 
-        # NOUVELLE SECTION : IDENTIFIANTS
         st.subheader("🔒 MON COMPTE")
-        with st.form("my_account"):
-            new_u = st.text_input("Changer Identifiant", st.session_state.user)
-            new_p = st.text_input("Nouveau Mot de Passe", type="password")
+        with st.form("acc_custom"):
+            nu = st.text_input("Identifiant", st.session_state.user)
+            np = st.text_input("Mot de Passe", type="password")
             if st.form_submit_button("MODIFIER PROFIL"):
-                run_db("UPDATE users SET username=?, password=? WHERE username=?", (new_u.lower(), make_hashes(new_p), st.session_state.user))
-                st.session_state.user = new_u.lower()
+                run_db("UPDATE users SET username=?, password=? WHERE username=?", (nu.lower(), make_hashes(np), st.session_state.user))
+                st.session_state.user = nu.lower()
                 st.success("Profil mis à jour !"); st.rerun()
 
-        st.subheader("📝 EN-TÊTE FACTURE")
-        with st.form("e"):
+        st.subheader("📝 FACTURE")
+        with st.form("header_custom"):
             n, a, t, r = st.text_input("Boutique", e[0]), st.text_input("Adresse", e[1]), st.text_input("Tél", e[2]), st.text_input("RCCM", e[3])
-            if st.form_submit_button("SAUVER"): 
+            if st.form_submit_button("SAUVER"):
                 run_db("UPDATE ent_infos SET nom_boutique=?, adresse=?, telephone=?, rccm=? WHERE ent_id=?", (n, a, t, r, st.session_state.ent_id)); st.rerun()
 
 # ==============================================================================
-# 7. SUPER ADMIN (AUCUNE MODIFICATION)
+# 7. SUPER ADMIN
 # ==============================================================================
 elif st.session_state.role == "SUPER_ADMIN":
     if st.session_state.page == "ABONNÉS":
