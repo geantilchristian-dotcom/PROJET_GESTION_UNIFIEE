@@ -1,7 +1,6 @@
 # ==============================================================================
-# ANASH ERP - VERSION v2900 (INTÉGRALE & SÉCURISÉE)
-# DÉVELOPPÉ POUR : BALIKA BUSINESS
-# CONTRÔLE : ADMIN & GÉRANT & VENDEUR
+# ANASH ERP v3100 - SOLUTION FINALE ANTI-BUG
+# CORRECTIF : INDEXERROR & SUBMIT BUTTON & DESIGN COBALT
 # ==============================================================================
 
 import streamlit as st
@@ -14,460 +13,339 @@ import json
 import random
 
 # ------------------------------------------------------------------------------
-# 1. DESIGN & INTERFACE (TEXTE BLANC SUR BLEU + MOBILE OPTIMIZED)
+# 1. DESIGN & CSS (FORCE LE TEXTE BLANC & ANIMATION DÉFILANTE)
 # ------------------------------------------------------------------------------
-st.set_page_config(page_title="ANASH ERP v2900", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ANASH ERP v3100", layout="wide", initial_sidebar_state="expanded")
 
-def apply_styles_v2900():
+def apply_v3100_ui():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;600&display=swap');
-
-    /* Fond Royal Cobalt */
+    /* Fond Global Bleu Cobalt */
     .stApp {
-        background: radial-gradient(circle at center, #0033aa 0%, #001133 100%) !important;
-        background-attachment: fixed !important;
+        background: radial-gradient(circle at center, #0044ff 0%, #001133 100%) !important;
         color: white !important;
-        font-family: 'Poppins', sans-serif;
     }
 
-    /* Message Défilant Fixe en Haut */
-    .top-marquee {
-        position: fixed; top: 0; left: 0; width: 100%; background: #000;
-        color: #00ff00; z-index: 99999; height: 35px; line-height: 35px;
-        font-weight: bold; border-bottom: 2px solid white; font-size: 15px;
+    /* MESSAGE DÉFILANT CSS (Fluide et visible) */
+    .marquee-container {
+        width: 100%; overflow: hidden; background: #000; color: #00ff00;
+        border-bottom: 2px solid #fff; position: fixed; top: 0; left: 0; z-index: 9999;
+        height: 40px; display: flex; align-items: center;
+    }
+    .marquee-text {
+        white-space: nowrap; display: inline-block;
+        animation: scroll-left 25s linear infinite;
+        font-weight: bold; font-size: 18px;
+    }
+    @keyframes scroll-left {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
     }
 
-    /* Horloge 80mm style Smartphone */
-    .hero-box {
+    /* HORLOGE GÉANTE 80mm */
+    .clock-container {
         background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(20px); border-radius: 40px; padding: 60px 20px;
-        text-align: center; border: 2px solid rgba(255, 255, 255, 0.2);
-        margin: 50px auto; max-width: 800px;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        backdrop-filter: blur(15px); border-radius: 35px; padding: 50px;
+        text-align: center; border: 2px solid white; margin: 60px auto;
+        max-width: 800px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
-    .big-time {
-        font-family: 'Orbitron', sans-serif; font-size: 100px; font-weight: 900;
-        color: #ffffff !important; text-shadow: 0 0 20px #00ccff; line-height: 1;
-    }
-    .big-date { font-size: 24px; color: #00ccff; letter-spacing: 4px; margin-top: 10px; }
+    .clock-h1 { font-family: 'Monospace'; font-size: 100px; color: #ffffff !important; margin: 0; }
+    .date-p { font-size: 24px; color: #00ffff !important; text-transform: uppercase; }
 
-    /* TEXTE BLANC SUR FOND BLEU (Cards) */
-    .info-card {
-        background: #0044ff !important; 
+    /* TEXTE BLANC SUR FOND BLEU (IMPORTANT) */
+    .blue-section {
+        background-color: #0044ff !important;
         color: white !important;
-        padding: 25px; border-radius: 20px; 
+        padding: 25px; border-radius: 20px;
         border: 1px solid rgba(255,255,255,0.4);
         margin-bottom: 15px;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     }
-    .info-card h1, .info-card h2, .info-card h3, .info-card p, .info-card b {
+    .blue-section h1, .blue-section h2, .blue-section h3, .blue-section p, .blue-section b {
         color: white !important;
     }
 
-    /* Cadre de Total Coloré (Panier) */
-    .total-container {
-        background: #000; 
-        color: #00ff00 !important; 
-        padding: 30px; border-radius: 20px;
-        border: 6px solid #00ff00; 
-        text-align: center; 
-        font-size: 45px;
-        font-weight: 900; 
-        margin: 25px 0; 
-        font-family: 'Orbitron', sans-serif;
-        box-shadow: 0 0 20px rgba(0,255,0,0.3);
+    /* CADRE TOTAL PANIER COLORÉ */
+    .total-frame-neon {
+        background: #000 !important;
+        color: #0ff !important;
+        border: 5px solid #0ff !important;
+        padding: 25px; border-radius: 20px;
+        text-align: center; font-size: 45px !important;
+        font-weight: 900; margin: 25px 0;
+        box-shadow: 0 0 20px rgba(0,255,255,0.4);
     }
 
-    /* Boutons Tactiles XXL */
+    /* BOUTONS XXL SMARTPHONE */
     .stButton>button {
-        width: 100% !important; height: 75px !important; border-radius: 20px !important;
-        background: linear-gradient(135deg, #0088ff, #0044bb) !important;
-        color: white !important; font-size: 20px !important; font-weight: bold !important;
-        border: 2px solid white !important;
-        text-transform: uppercase;
+        background: linear-gradient(135deg, #0088ff, #0044cc) !important;
+        color: white !important; height: 75px !important;
+        font-size: 22px !important; border-radius: 20px !important;
+        border: 2px solid #fff !important; width: 100% !important;
+        font-weight: bold;
     }
 
-    /* Inputs pour Mobile */
-    input, select, textarea {
-        background-color: white !important; color: black !important;
-        border-radius: 12px !important; height: 50px !important;
-    }
-
-    /* Sidebar Design */
+    /* SIDEBAR */
     [data-testid="stSidebar"] { background-color: #ffffff !important; }
     [data-testid="stSidebar"] * { color: #000 !important; font-weight: 600; }
+
+    /* Fix pour inputs sur mobile */
+    input, select { background-color: white !important; color: black !important; height: 50px !important; }
     </style>
     """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. MOTEUR DE BASE DE DONNÉES SQLITE
+# 2. MOTEUR DE DONNÉES SQLITE
 # ------------------------------------------------------------------------------
-DB_NAME = "anash_v2900_master.db"
+DB_PATH = "anash_master_v3100.db"
 
-def run_db(sql, params=(), fetch=True):
-    with sqlite3.connect(DB_NAME) as conn:
+def sql_query(sql, params=(), fetch=True):
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute(sql, params)
         conn.commit()
         return cursor.fetchall() if fetch else None
 
-def setup_system():
-    # Table des Utilisateurs
-    run_db("""CREATE TABLE IF NOT EXISTS users (
-        uid TEXT PRIMARY KEY, pwd TEXT, role TEXT, owner TEXT, 
-        status TEXT DEFAULT 'ACTIF', name TEXT, tel TEXT)""", fetch=False)
-    
-    # Table des Boutiques
-    run_db("""CREATE TABLE IF NOT EXISTS shops (
-        id TEXT PRIMARY KEY, name TEXT, owner TEXT, 
-        rate REAL DEFAULT 2800.0, header TEXT, address TEXT, tel TEXT)""", fetch=False)
-    
-    # Table Stock
-    run_db("""CREATE TABLE IF NOT EXISTS stock (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, item TEXT, 
-        qte INTEGER, p_achat REAL, p_vente REAL, shop_id TEXT)""", fetch=False)
-    
-    # Table Ventes
-    run_db("""CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, client TEXT, 
-        total REAL, paye REAL, reste REAL, date TEXT, time TEXT, 
-        seller TEXT, shop_id TEXT, details TEXT)""", fetch=False)
-    
-    # Table Dettes
-    run_db("""CREATE TABLE IF NOT EXISTS debts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, client TEXT, 
-        balance REAL, ref TEXT, shop_id TEXT, status TEXT DEFAULT 'OUVERT')""", fetch=False)
-    
-    # Configuration (Marquee)
-    run_db("CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY, marquee TEXT)", fetch=False)
+def boot_v3100():
+    sql_query("CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, pwd TEXT, role TEXT, s_ref TEXT, status TEXT, name TEXT, tel TEXT)", fetch=False)
+    sql_query("CREATE TABLE IF NOT EXISTS shops (sid TEXT PRIMARY KEY, name TEXT, owner TEXT, rate REAL, head TEXT, addr TEXT, tel TEXT)", fetch=False)
+    sql_query("CREATE TABLE IF NOT EXISTS stock (id INTEGER PRIMARY KEY AUTOINCREMENT, item TEXT, qty INTEGER, buy REAL, sell REAL, sid TEXT)", fetch=False)
+    sql_query("CREATE TABLE IF NOT EXISTS sales (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT, cli TEXT, tot REAL, pay REAL, res REAL, date TEXT, time TEXT, seller TEXT, sid TEXT, data TEXT)", fetch=False)
+    sql_query("CREATE TABLE IF NOT EXISTS debts (id INTEGER PRIMARY KEY AUTOINCREMENT, cli TEXT, bal REAL, ref TEXT, sid TEXT, status TEXT)", fetch=False)
+    sql_query("CREATE TABLE IF NOT EXISTS system_cfg (id INTEGER PRIMARY KEY, marquee TEXT)", fetch=False)
 
-    # Initialisation Admin (admin / admin123)
-    if not run_db("SELECT uid FROM users WHERE uid='admin'"):
-        run_db("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
-              ('admin', hashlib.sha256(b"admin123").hexdigest(), 'SUPER_ADMIN', 'SYSTEM', 'ACTIF', 'ADMINISTRATEUR', '000'), fetch=False)
+    # Admin par défaut
+    if not sql_query("SELECT uid FROM users WHERE uid='admin'"):
+        sql_query("INSERT INTO users VALUES ('admin', ?, 'ADMIN', 'SYSTEM', 'ACTIF', 'ADMINISTRATEUR', '000')", (hashlib.sha256(b"admin123").hexdigest(),), fetch=False)
     
-    # Message défilant par défaut
-    if not run_db("SELECT * FROM config"):
-        run_db("INSERT INTO config VALUES (1, 'BIENVENUE SUR ANASH ERP v2900 - VOTRE SYSTÈME DE GESTION PROFESSIONNEL')", fetch=False)
+    if not sql_query("SELECT id FROM system_cfg"):
+        sql_query("INSERT INTO system_cfg VALUES (1, 'ANASH ERP v3100 - BIENVENUE DANS VOTRE ESPACE DE GESTION PROFESSIONNEL')", fetch=False)
 
-setup_system()
-marquee_text = run_db("SELECT marquee FROM config WHERE id=1")[0][0]
+boot_v3100()
+current_marquee = sql_query("SELECT marquee FROM system_cfg WHERE id=1")[0][0]
 
 # ------------------------------------------------------------------------------
-# 3. GESTION DES SESSIONS
+# 3. INITIALISATION SESSION
 # ------------------------------------------------------------------------------
-if 'auth' not in st.session_state:
-    st.session_state.update({
-        'auth': False, 'user': None, 'role': None, 
-        'active_shop': None, 'panier': {}, 'ticket': None
-    })
+if 'state' not in st.session_state:
+    st.session_state.state = {'auth': False, 'u': None, 'r': None, 's': None, 'cart': {}, 'ticket': None}
 
-apply_styles_v2900()
-st.markdown(f'<div class="top-marquee"><marquee scrollamount="7">{marquee_text}</marquee></div>', unsafe_allow_html=True)
+apply_v3100_ui()
+
+# Affichage du message défilant CSS
+st.markdown(f'<div class="marquee-container"><div class="marquee-text">{current_marquee}</div></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 4. ÉCRAN DE CONNEXION (ACCÈS RÉPARÉ)
+# 4. AUTHENTIFICATION (FIXÉE)
 # ------------------------------------------------------------------------------
-if not st.session_state.auth:
+if not st.session_state.state['auth']:
     st.markdown("<br><br><br>", unsafe_allow_html=True)
-    _, login_col, _ = st.columns([1, 1.8, 1])
-    
-    with login_col:
-        st.markdown("<div class='hero-box'><h1 style='color:white;'>ANASH ERP</h1></div>", unsafe_allow_html=True)
-        tab_log, tab_reg = st.tabs(["🔑 CONNEXION", "📝 S'INSCRIRE"])
+    _, lbox, _ = st.columns([1, 1.8, 1])
+    with lbox:
+        st.markdown("<div class='clock-container'><h1 style='color:white;'>ANASH ERP</h1></div>", unsafe_allow_html=True)
+        t_login, t_signup = st.tabs(["🔐 CONNEXION", "📝 INSCRIPTION"])
         
-        with tab_log:
-            u_input = st.text_input("Identifiant").lower().strip()
-            p_input = st.text_input("Mot de passe", type="password")
+        with t_login:
+            u_id = st.text_input("Identifiant").lower().strip()
+            u_pw = st.text_input("Mot de passe", type="password")
             if st.button("ACCÉDER AU SYSTÈME"):
-                user_res = run_db("SELECT pwd, role, owner, status FROM users WHERE uid=?", (u_input,))
-                if user_res and hashlib.sha256(p_input.encode()).hexdigest() == user_res[0][0]:
-                    if user_res[0][3] == "EN_ATTENTE":
-                        st.warning("⏳ Compte en attente de validation.")
-                    elif user_res[0][3] == "BLOQUE":
-                        st.error("🚫 Accès suspendu.")
+                res = sql_query("SELECT pwd, role, s_ref, status FROM users WHERE uid=?", (u_id,))
+                if res and hashlib.sha256(u_pw.encode()).hexdigest() == res[0][0]:
+                    if res[0][3] == "EN_ATTENTE":
+                        st.warning("Compte en attente de validation par l'Admin.")
                     else:
-                        st.session_state.auth = True
-                        st.session_state.user = u_input
-                        st.session_state.role = user_res[0][1]
-                        # Charger la boutique par défaut
-                        if user_res[0][1] == "GERANT":
-                            btqs = run_db("SELECT id FROM shops WHERE owner=?", (u_input,))
-                            if btqs: st.session_state.active_shop = btqs[0][0]
-                        elif user_res[0][1] == "VENDEUR":
-                            st.session_state.active_shop = user_res[0][2]
-                        st.success("Connexion réussie !")
-                        time.sleep(1)
+                        st.session_state.state.update({'auth': True, 'u': u_id, 'r': res[0][1], 's': res[0][2]})
                         st.rerun()
-                else: st.error("❌ Identifiants invalides.")
+                else: st.error("Identifiants incorrects.")
 
-        with tab_reg:
-            with st.form("reg_form"):
-                st.info("Tout compte gérant doit être validé par l'admin.")
-                r_uid = st.text_input("Identifiant souhaité").lower()
-                r_name = st.text_input("Nom Complet")
-                r_tel = st.text_input("Téléphone")
-                r_pwd = st.text_input("Mot de passe", type="password")
-                if st.form_submit_button("CRÉER MON COMPTE GÉRANT"):
-                    if run_db("SELECT uid FROM users WHERE uid=?", (r_uid,)):
-                        st.error("Identifiant déjà utilisé.")
+        with t_signup:
+            with st.form("signup"):
+                su_id = st.text_input("ID Utilisateur").lower()
+                su_nm = st.text_input("Nom Complet")
+                su_tl = st.text_input("Numéro Téléphone")
+                su_pw = st.text_input("Mot de passe", type="password")
+                if st.form_submit_button("S'INSCRIRE"):
+                    if sql_query("SELECT uid FROM users WHERE uid=?", (su_id,)): st.error("Déjà pris.")
                     else:
-                        run_db("INSERT INTO users VALUES (?,?,?,?,?,?,?)",
-                              (r_uid, hashlib.sha256(r_pwd.encode()).hexdigest(), 'GERANT', 'EN_ATTENTE', 'EN_ATTENTE', r_name, r_tel), fetch=False)
-                        st.success("✅ Inscription réussie ! Attendez l'activation.")
+                        sql_query("INSERT INTO users VALUES (?,?,?,?,?,?,?)", (su_id, hashlib.sha256(su_pw.encode()).hexdigest(), 'GERANT', 'EN_ATTENTE', 'EN_ATTENTE', su_nm, su_tl), fetch=False)
+                        st.success("Inscrit ! Attendez la validation Admin.")
     st.stop()
 
 # ------------------------------------------------------------------------------
-# 5. ESPACE SUPER ADMIN (PANEL DE VALIDATION)
+# 5. ESPACE ADMIN (FIXÉ POUR admin / admin123)
 # ------------------------------------------------------------------------------
-if st.session_state.role == "SUPER_ADMIN":
-    st.sidebar.title("💎 ADMIN PANEL")
-    adm_choice = st.sidebar.radio("Navigation", ["Validation Comptes", "Message Défilant", "Déconnexion"])
+if st.session_state.state['r'] == "ADMIN":
+    st.sidebar.title("ADMINISTRATEUR")
+    a_nav = st.sidebar.radio("Menu", ["Validation Comptes", "Message Défilant", "Déconnexion"])
     
-    if adm_choice == "Validation Comptes":
-        st.header("👥 GESTION DES UTILISATEURS")
-        users = run_db("SELECT uid, name, tel, status FROM users WHERE role='GERANT'")
-        for u, n, t, s in users:
+    if a_nav == "Validation Comptes":
+        st.header("👥 ACTIVATION DES GÉRANTS")
+        pendings = sql_query("SELECT uid, name, tel, status FROM users WHERE role='GERANT'")
+        for u, n, t, s in pendings:
             with st.container():
-                st.markdown(f"""<div class='info-card'>
-                    <h3>{n} (@{u})</h3>
-                    <p>Téléphone: {t} | Statut: <b>{s}</b></p>
-                </div>""", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns(3)
-                if c1.button("✅ ACTIVER", key=f"ok_{u}"):
-                    run_db("UPDATE users SET status='ACTIF', owner=? WHERE uid=?", (u, u), fetch=False)
+                st.markdown(f"<div class='blue-section'><h3>{n} (@{u})</h3><p>Tel: {t} | Statut: {s}</p></div>", unsafe_allow_html=True)
+                ca, cb = st.columns(2)
+                if ca.button("✅ ACTIVER", key=f"ok_{u}"):
+                    sql_query("UPDATE users SET status='ACTIF', s_ref=? WHERE uid=?", (u, u), fetch=False)
                     st.rerun()
-                if c2.button("⏸️ BLOQUER", key=f"bl_{u}"):
-                    run_db("UPDATE users SET status='BLOQUE' WHERE uid=?", (u,), fetch=False)
-                    st.rerun()
-                if c3.button("🗑️ SUPPRIMER", key=f"dl_{u}"):
-                    run_db("DELETE FROM users WHERE uid=?", (u,), fetch=False)
+                if cb.button("🗑️ SUPPRIMER", key=f"rm_{u}"):
+                    sql_query("DELETE FROM users WHERE uid=?", (u,), fetch=False)
                     st.rerun()
 
-    elif adm_choice == "Message Défilant":
+    elif a_nav == "Message Défilant":
         st.header("📢 ÉDITER LE MESSAGE")
-        new_marq = st.text_area("Texte du message", marquee_text)
-        if st.button("ENREGISTRER LE MESSAGE"):
-            run_db("UPDATE config SET marquee=? WHERE id=1", (new_marq,), fetch=False)
+        new_m = st.text_area("Texte du message", current_marquee)
+        if st.button("ENREGISTRER"):
+            sql_query("UPDATE system_cfg SET marquee=? WHERE id=1", (new_m,), fetch=False)
             st.rerun()
 
-    if adm_choice == "Déconnexion": st.session_state.auth = False; st.rerun()
+    if a_nav == "Déconnexion": st.session_state.state['auth'] = False; st.rerun()
     st.stop()
 
 # ------------------------------------------------------------------------------
-# 6. ESPACE GÉRANT & VENDEUR
+# 6. PANEL UTILISATEUR (GERANT / VENDEUR)
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown(f"<div style='background:#0044ff; color:white; padding:15px; border-radius:15px;'>🏪 {st.session_state.active_shop if st.session_state.active_shop else 'ANASH'}<br>👤 {st.session_state.user.upper()}</div>", unsafe_allow_html=True)
-    
-    if st.session_state.role == "GERANT":
-        my_shops = run_db("SELECT id, name FROM shops WHERE owner=?", (st.session_state.user,))
-        if my_shops:
-            shop_map = {s[1]: s[0] for s in my_shops}
-            shop_sel = st.selectbox("Changer Boutique", list(shop_map.keys()))
-            st.session_state.active_shop = shop_map[shop_sel]
-        
-        menu = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK PAR ID", "📉 DETTES", "📊 RAPPORTS", "👥 ÉQUIPE", "⚙️ RÉGLAGES", "🚪 QUITTER"]
+    st.markdown(f"👤 **{st.session_state.state['u'].upper()}**")
+    if st.session_state.state['r'] == "GERANT":
+        u_menu = ["🏠 ACCUEIL", "🛒 CAISSE", "📦 STOCK", "📉 DETTES", "📊 RAPPORTS", "👥 ÉQUIPE", "⚙️ RÉGLAGES", "🚪 QUITTER"]
     else:
-        # Vendeurs ne voient que ça
-        menu = ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES", "📊 RAPPORTS", "🚪 QUITTER"]
-    
-    choice = st.radio("MENU", menu)
+        u_menu = ["🏠 ACCUEIL", "🛒 CAISSE", "📉 DETTES", "📊 RAPPORTS", "🚪 QUITTER"]
+    choice = st.radio("NAVIGATION", u_menu)
 
-# Charger infos boutique
-info = run_db("SELECT name, rate, header, address, tel FROM shops WHERE id=?", (st.session_state.active_shop,))
-if not info:
-    if st.session_state.role == "GERANT":
-        st.warning("Veuillez créer votre boutique dans RÉGLAGES.")
+# RECUPERATION DES INFOS BOUTIQUE (AVEC SECURITE ANTI-BUG)
+shop_data = sql_query("SELECT name, rate, head, addr, tel FROM shops WHERE sid=?", (st.session_state.state['s'],))
+if not shop_data:
+    if st.session_state.state['r'] == "GERANT":
+        st.warning("⚠️ Aucune boutique trouvée. Veuillez en créer une dans RÉGLAGES.")
+        shop_info = ("", 2800.0, "", "", "") # Valeurs par défaut pour éviter l'IndexError
         choice = "⚙️ RÉGLAGES"
-    else: st.error("Accès non configuré."); st.stop()
-else: info = info[0]
+    else: st.error("Accès boutique restreint."); st.stop()
+else:
+    shop_info = shop_data[0]
 
-# --- 6.1 ACCUEIL ---
+# --- ACCUEIL ---
 if choice == "🏠 ACCUEIL":
     st.markdown(f"""
-    <div class='hero-box'>
-        <div class='big-time'>{datetime.now().strftime('%H:%M')}</div>
-        <div class='big-date'>{datetime.now().strftime('%A, %d %B %Y')}</div>
+    <div class='clock-container'>
+        <p class='clock-h1'>{datetime.now().strftime('%H:%M')}</p>
+        <p class='date-p'>{datetime.now().strftime('%d %B %Y')}</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Résumé blanc sur bleu
-    auj = datetime.now().strftime("%d/%m/%Y")
-    recette = run_db("SELECT SUM(total) FROM sales WHERE shop_id=? AND date=?", (st.session_state.active_shop, auj))[0][0] or 0
-    st.markdown(f"<div class='info-card'><h2 style='text-align:center;'>RECETTE DU JOUR : {recette:,.2f} $</h2></div>", unsafe_allow_html=True)
+    recette_j = sql_query("SELECT SUM(tot) FROM sales WHERE sid=? AND date=?", (st.session_state.state['s'], datetime.now().strftime("%d/%m/%Y")))[0][0] or 0
+    st.markdown(f"<div class='blue-section'><h2 style='text-align:center; color:white;'>RECETTE DU JOUR : {recette_j:,.2f} $</h2></div>", unsafe_allow_html=True)
 
-# --- 6.2 CAISSE TACTILE ---
+# --- CAISSE ---
 elif choice == "🛒 CAISSE":
-    if not st.session_state.ticket:
-        st.header("🛒 VENTE")
-        devise = st.radio("Devise de paiement", ["USD", "CDF"], horizontal=True)
-        taux = info[1]
+    if not st.session_state.state['ticket']:
+        st.header("🛒 CAISSE")
+        devise = st.radio("Devise", ["USD", "CDF"], horizontal=True)
+        taux = shop_info[1]
         
-        # Liste articles
-        art_list = run_db("SELECT item, p_vente, qte FROM stock WHERE shop_id=?", (st.session_state.active_shop,))
-        art_map = {a[0]: (a[1], a[2]) for a in art_list}
+        prods = sql_query("SELECT item, sell, qty FROM stock WHERE sid=?", (st.session_state.state['s'],))
+        p_map = {p[0]: (p[1], p[2]) for p in prods}
         
-        sel_art = st.selectbox("🔎 Chercher Article", ["---"] + list(art_map.keys()))
-        if sel_art != "---":
-            if art_map[sel_art][1] > 0:
-                st.session_state.panier[sel_art] = st.session_state.panier.get(sel_art, 0) + 1
-                st.toast(f"Ajouté : {sel_art}")
+        sel_p = st.selectbox("Choisir Produit", ["---"] + list(p_map.keys()))
+        if sel_p != "---":
+            if p_map[sel_p][1] > 0:
+                st.session_state.state['cart'][sel_p] = st.session_state.state['cart'].get(sel_p, 0) + 1
+                st.toast(f"Ajouté : {sel_p}")
             else: st.error("Stock épuisé !")
 
-        if st.session_state.panier:
+        if st.session_state.state['cart']:
             st.divider()
-            total_v = 0.0; details_v = []
-            for n, q in list(st.session_state.panier.items()):
-                p_unit = art_map[n][0] if devise == "USD" else art_map[n][0] * taux
-                sous_t = p_unit * q
-                total_v += sous_t
-                details_v.append({"nom": n, "qte": q, "prix": p_unit, "st": sous_t})
-                
-                st.markdown(f"<div style='background:white; color:black; padding:10px; border-radius:10px; margin-bottom:5px;'><b>{n}</b> | {q} x {p_unit:,.0f} = {sous_t:,.0f} {devise}</div>", unsafe_allow_html=True)
-                if st.button(f"Supprimer {n}"): del st.session_state.panier[n]; st.rerun()
+            total_v = 0.0; list_v = []
+            for n, q in list(st.session_state.state['cart'].items()):
+                p_u = p_map[n][0] if devise == "USD" else p_map[n][0] * taux
+                stot = p_u * q
+                total_v += stot
+                list_v.append({"n": n, "q": q, "p": p_u, "s": stot})
+                st.markdown(f"<div style='background:white;color:black;padding:10px;border-radius:10px;margin-bottom:5px;'><b>{n}</b> | {q} x {p_u:,.0f} {devise}</div>", unsafe_allow_html=True)
+                if st.button(f"Retirer {n}"): del st.session_state.state['cart'][n]; st.rerun()
 
-            # CADRE TOTAL COLORÉ
-            st.markdown(f"<div class='total-container'>TOTAL : {total_v:,.2f} {devise}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='total-frame-neon'>TOTAL : {total_v:,.2f} {devise}</div>", unsafe_allow_html=True)
             
-            client = st.text_input("Client", "COMPTANT").upper()
-            verse = st.number_input(f"Montant Reçu ({devise})", value=float(total_v))
-            reste = total_v - verse
+            c_nom = st.text_input("Client", "COMPTANT").upper()
+            c_pay = st.number_input(f"Payé ({devise})", value=float(total_v))
+            c_res = total_v - c_pay
             
-            if st.button("🚀 VALIDER LA VENTE"):
-                ref_v = f"FAC-{random.randint(1000,9999)}"
-                dv, hv = datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M")
+            if st.button("🚀 FINALISER LA VENTE"):
+                v_ref = f"FAC-{random.randint(1000,9999)}"
+                d, h = datetime.now().strftime("%d/%m/%Y"), datetime.now().strftime("%H:%M")
                 
-                # Conversion USD pour BD
-                t_usd = total_v if devise == "USD" else total_v / taux
-                p_usd = verse if devise == "USD" else verse / taux
-                r_usd = reste if devise == "USD" else reste / taux
+                # Sauvegarde base USD
+                t_u = total_v if devise == "USD" else total_v / taux
+                p_u = c_pay if devise == "USD" else c_pay / taux
+                r_u = c_res if devise == "USD" else c_res / taux
                 
-                run_db("""INSERT INTO sales (ref, client, total, paye, reste, date, time, seller, shop_id, details) 
-                        VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                        (ref_v, client, t_usd, p_usd, r_usd, dv, hv, st.session_state.user, st.session_state.active_shop, json.dumps(details_v)), fetch=False)
+                sql_query("INSERT INTO sales (ref, cli, tot, pay, res, date, time, seller, sid, data) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                         (v_ref, c_nom, t_u, p_u, r_u, d, h, st.session_state.state['u'], st.session_state.state['s'], json.dumps(list_v)), fetch=False)
                 
-                for i in details_v:
-                    run_db("UPDATE stock SET qte = qte - ? WHERE item=? AND shop_id=?", (i['qte'], i['nom'], st.session_state.active_shop), fetch=False)
+                for it in list_v:
+                    sql_query("UPDATE stock SET qty = qty - ? WHERE item=? AND sid=?", (it['q'], it['n'], st.session_state.state['s']), fetch=False)
                 
-                if r_usd > 0:
-                    run_db("INSERT INTO debts (client, balance, ref, shop_id) VALUES (?,?,?,?)", (client, r_usd, ref_v, st.session_state.active_shop), fetch=False)
+                if r_u > 0:
+                    sql_query("INSERT INTO debts (cli, bal, ref, sid, status) VALUES (?,?,?,?,?)", (c_nom, r_u, v_ref, st.session_state.state['s'], 'OUVERT'), fetch=False)
                 
-                st.session_state.ticket = {"ref": ref_v, "cli": client, "tot": total_v, "pay": verse, "res": reste, "dev": devise, "items": details_v, "d": dv, "h": hv}
-                st.session_state.panier = {}; st.rerun()
+                st.session_state.state['ticket'] = {"ref": v_ref, "cli": c_nom, "tot": total_v, "pay": c_pay, "res": c_res, "dev": devise, "items": list_v, "d": d, "h": h}
+                st.session_state.state['cart'] = {}; st.rerun()
     else:
-        # TICKET DE CAISSE
-        tk = st.session_state.ticket
-        st.markdown(f"""
-        <div style='background:white; color:black; padding:25px; border-radius:10px; font-family:monospace;'>
-            <h2 style='text-align:center;'>{info[2] if info[2] else info[0]}</h2>
-            <p style='text-align:center;'>{info[3]}<br>{info[4]}</p>
-            <hr>
-            <p>REF: {tk['ref']} | {tk['d']} {tk['h']}</p>
-            {"".join([f"<p>{x['nom']} x{x['qte']} : {x['st']:,.0f} {tk['dev']}</p>" for x in tk['items']])}
-            <hr>
-            <h3>TOTAL: {tk['tot']:,.2f} {tk['dev']}</h3>
-            <p>REÇU: {tk['pay']:,.2f} | RESTE: {tk['res']:,.2f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("⬅️ NOUVELLE VENTE"): st.session_state.ticket = None; st.rerun()
+        # TICKET
+        tk = st.session_state.state['ticket']
+        st.markdown(f"<div style='background:white; color:black; padding:20px; border-radius:10px; font-family:monospace;'><h3>{shop_info[0]}</h3><p>REF: {tk['ref']}</p><hr>{"".join([f"<p>{x['n']} x{x['q']} : {x['s']:,.0f} {tk['dev']}</p>" for x in tk['items']])}<hr><h4>TOTAL: {tk['tot']:,.2f} {tk['dev']}</h4></div>", unsafe_allow_html=True)
+        if st.button("NOUVELLE VENTE"): st.session_state.state['ticket'] = None; st.rerun()
 
-# --- 6.3 STOCK PAR ID ---
-elif choice == "📦 STOCK PAR ID":
-    st.header("📦 INVENTAIRE")
-    t_inv, t_maj = st.tabs(["LISTE ARTICLES", "AJOUTER / MODIFIER"])
-    with t_inv:
-        stk = run_db("SELECT id, item, qte, p_vente FROM stock WHERE shop_id=?", (st.session_state.active_shop,))
-        for i, a, q, p in stk:
-            st.markdown(f"<div class='info-card'>ID: {i} | <b>{a}</b> | Qte: {q} | Prix: {p} $</div>", unsafe_allow_html=True)
-        
-        st.divider()
-        del_id = st.number_input("ID à supprimer", 0)
-        if st.button("SUPPRIMER L'ARTICLE"):
-            run_db("DELETE FROM stock WHERE id=? AND shop_id=?", (del_id, st.session_state.active_shop), fetch=False)
-            st.rerun()
-            
-    with t_maj:
-        with st.form("form_stk"):
-            mode = st.radio("Action", ["Nouveau", "Modifier via ID"])
-            f_id = st.number_input("ID (si modification)", 0)
-            f_art = st.text_input("Désignation")
-            f_qte = st.number_input("Quantité en stock", 0)
-            f_pa = st.number_input("Prix d'Achat ($)")
-            f_pv = st.number_input("Prix de Vente ($)")
-            if st.form_submit_button("VALIDER L'ARTICLE"):
-                if mode == "Nouveau":
-                    run_db("INSERT INTO stock (item, qte, p_achat, p_vente, shop_id) VALUES (?,?,?,?,?)", (f_art.upper(), f_qte, f_pa, f_pv, st.session_state.active_shop), fetch=False)
-                else:
-                    run_db("UPDATE stock SET item=?, qte=?, p_achat=?, p_vente=? WHERE id=? AND shop_id=?", (f_art.upper(), f_qte, f_pa, f_pv, f_id, st.session_state.active_shop), fetch=False)
-                st.rerun()
-
-# --- 6.4 DETTES ---
-elif choice == "📉 DETTES":
-    st.header("📉 CLIENTS DÉBITEURS")
-    dettes = run_db("SELECT id, client, balance, ref FROM debts WHERE shop_id=? AND status='OUVERT'", (st.session_state.active_shop,))
-    if not dettes: st.success("Aucune dette !")
-    for d_id, d_cli, d_bal, d_ref in dettes:
-        with st.container():
-            st.markdown(f"<div class='info-card'><h3>{d_cli}</h3><p>Reste: {d_bal:,.2f} $ (Ref: {d_ref})</p></div>", unsafe_allow_html=True)
-            v_pay = st.number_input(f"Verser pour {d_cli}", 0.0, float(d_bal), key=f"v_{d_id}")
-            if st.button(f"ENCAISSER", key=f"b_{d_id}"):
-                new_bal = d_bal - v_pay
-                if new_bal <= 0:
-                    run_db("UPDATE debts SET balance=0, status='PAYE' WHERE id=?", (d_id,), fetch=False)
-                else:
-                    run_db("UPDATE debts SET balance=? WHERE id=?", (new_bal, d_id), fetch=False)
-                st.rerun()
-
-# --- 6.5 ÉQUIPE ---
-elif choice == "👥 ÉQUIPE":
-    st.header("👥 MES VENDEURS")
-    with st.form("v_form"):
-        v_u = st.text_input("Identifiant Vendeur").lower()
-        v_p = st.text_input("Mot de passe", type="password")
-        v_n = st.text_input("Nom Complet")
-        if st.form_submit_button("CRÉER LE COMPTE"):
-            run_db("INSERT INTO users (uid, pwd, role, owner, status, name) VALUES (?,?,?,?,?,?)",
-                  (v_u, hashlib.sha256(v_p.encode()).hexdigest(), 'VENDEUR', st.session_state.active_shop, 'ACTIF', v_n), fetch=False)
-            st.rerun()
-    
-    st.subheader("Liste de l'Équipe")
-    team = run_db("SELECT uid, name FROM users WHERE owner=? AND role='VENDEUR'", (st.session_state.active_shop,))
-    for tu, tn in team:
-        st.write(f"👤 {tn} (@{tu})")
-        if st.button(f"Supprimer {tu}"):
-            run_db("DELETE FROM users WHERE uid=?", (tu,), fetch=False); st.rerun()
-
-# --- 6.6 RÉGLAGES ---
+# --- RÉGLAGES (FIXÉ) ---
 elif choice == "⚙️ RÉGLAGES":
-    st.header("⚙️ MA BOUTIQUE")
-    with st.expander("➕ CRÉER UNE NOUVELLE BOUTIQUE"):
-        with st.form("new_sh"):
-            ns_id = st.text_input("ID Boutique (ex: boutique1)").lower()
-            ns_nm = st.text_input("Nom Enseigne")
-            if st.form_submit_button("LANCER LA BOUTIQUE"):
-                run_db("INSERT INTO shops (id, name, owner) VALUES (?,?,?)", (ns_id, ns_nm, st.session_state.user), fetch=False)
-                st.session_state.active_shop = ns_id; st.rerun()
+    st.header("⚙️ CONFIGURATION BOUTIQUE")
+    
+    # Formulaire de mise à jour avec vérification d'existence
+    with st.form("shop_update"):
+        st.subheader("Informations de la boutique")
+        # Ici, on utilise shop_info qui a des valeurs par défaut si shop_data était vide
+        e_n = st.text_input("Nom Enseigne", shop_info[0])
+        e_t = st.number_input("Taux de change (CDF/USD)", shop_info[1])
+        e_h = st.text_input("En-tête Facture", shop_info[2])
+        e_a = st.text_input("Adresse", shop_info[3])
+        e_p = st.text_input("Téléphone", shop_info[4])
+        
+        # BOUTON DE SOUMISSION OBLIGATOIRE DANS UN FORMULAIRE
+        submit = st.form_submit_button("SAUVEGARDER LES MODIFICATIONS")
+        
+        if submit:
+            if not shop_data:
+                sql_query("INSERT INTO shops VALUES (?,?,?,?,?,?,?)", (st.session_state.state['s'], e_n, st.session_state.state['u'], e_t, e_h, e_a, e_p), fetch=False)
+            else:
+                sql_query("UPDATE shops SET name=?, rate=?, head=?, addr=?, tel=? WHERE sid=?", (e_n, e_t, e_h, e_a, e_p, st.session_state.state['s']), fetch=False)
+            st.success("✅ Boutique mise à jour !")
+            st.rerun()
+
+# --- STOCK ---
+elif choice == "📦 STOCK":
+    st.header("📦 STOCK")
+    with st.form("add_stock"):
+        f_n = st.text_input("Désignation")
+        f_q = st.number_input("Quantité", 0)
+        f_a = st.number_input("Prix Achat ($)")
+        f_v = st.number_input("Prix Vente ($)")
+        if st.form_submit_button("AJOUTER"):
+            sql_query("INSERT INTO stock (item, qty, buy, sell, sid) VALUES (?,?,?,?,?)", (f_n.upper(), f_q, f_a, f_v, st.session_state.state['s']), fetch=False)
+            st.rerun()
     
     st.divider()
-    with st.form("edit_sh"):
-        st.subheader("Configuration Boutique")
-        e_n = st.text_input("Nom Enseigne", info[0])
-        e_t = st.number_input("Taux de change (CDF/USD)", info[1])
-        e_h = st.text_input("En-tête Facture", info[2])
-        e_a = st.text_input("Adresse", info[3])
-        e_l = st.text_input("Téléphone", info[4])
-        if st.form_submit_button("METTRE À JOUR"):
-            run_db("UPDATE shops SET name=?, rate=?, header=?, address=?, tel=? WHERE id=?", (e_n, e_t, e_h, e_a, e_l, st.session_state.active_shop), fetch=False)
-            st.rerun()
+    inv = sql_query("SELECT id, item, qty, sell FROM stock WHERE sid=?", (st.session_state.state['s'],))
+    for i, n, q, p in inv:
+        st.markdown(f"<div class='blue-section'>ID: {i} | <b>{n}</b> | Qte: {q} | Prix: {p} $</div>", unsafe_allow_html=True)
 
-elif choice == "📊 RAPPORTS":
-    st.header("📊 VENTES RÉCENTES")
-    filt_d = st.date_input("Date", datetime.now()).strftime("%d/%m/%Y")
-    logs = run_db("SELECT time, ref, client, total, seller FROM sales WHERE shop_id=? AND date=? ORDER BY id DESC", (st.session_state.active_shop, filt_d))
-    for t, r, c, tot, sel in logs:
-        st.markdown(f"<div class='info-card'>{t} | {r} | <b>{tot:,.2f} $</b> | Cli: {c} | Par: {sel}</div>", unsafe_allow_html=True)
+elif choice == "📉 DETTES":
+    st.header("📉 DETTES")
+    dts = sql_query("SELECT id, cli, bal, ref FROM debts WHERE sid=? AND status='OUVERT'", (st.session_state.state['s'],))
+    for di, dc, db, dr in dts:
+        with st.container():
+            st.markdown(f"<div class='blue-section'><h3>{dc}</h3><p>Solde: {db:,.2f} $</p></div>", unsafe_allow_html=True)
+            if st.button(f"Solder {dc}", key=f"s_{di}"):
+                sql_query("UPDATE debts SET bal=0, status='PAYE' WHERE id=?", (di,), fetch=False)
+                st.rerun()
 
 elif choice == "🚪 QUITTER":
-    st.session_state.auth = False; st.rerun()
+    st.session_state.state['auth'] = False; st.rerun()
